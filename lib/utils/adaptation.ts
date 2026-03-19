@@ -1,113 +1,144 @@
 /**
- * Utility functions for AI analysis and adaptation process
- * Corresponds to spec-process-adaptation.md Section 4.5
+ * Utility functions for question adaptation
+ * Used by both Edge Functions and API routes
  */
 
-import type { AdaptedAlternative } from '@/lib/types/adaptation';
-import { z } from 'zod';
-import { adaptedAlternativeSchema } from '@/lib/schemas/adaptation';
+export type BloomLevel = 'remember' | 'understand' | 'apply' | 'analyze' | 'evaluate' | 'create'
 
-/**
- * Identifies question type based on alternatives field
- * @returns 'multiple_choice' if alternatives is non-null object, 'essay' otherwise
- */
-export function identifyQuestionType(
-  question: { alternatives?: Record<string, string> | null }
-): 'multiple_choice' | 'essay' {
-  return question.alternatives != null ? 'multiple_choice' : 'essay';
+export interface AdaptedAlternative {
+  label: string
+  text: string
+}
+
+export interface BnccAnalysis {
+  skillCode: string
+  skillDescription: string
+}
+
+export interface BloomAnalysis {
+  level: BloomLevel
+  justification: string
+}
+
+export interface AdaptationResponse {
+  adaptedStatement?: string
+  adaptedAlternatives?: AdaptedAlternative[]
 }
 
 /**
- * Validates correct answer for a question type
- * MC: must be a single letter A-E; Essay: any string is valid (including empty)
- * @returns null if valid, error message string if invalid
+ * Validates that adapted alternatives count matches original count
+ * CON-001: adaptedAlternatives.length MUST equal original alternatives.length
  */
-export function validateCorrectAnswer(
-  answer: string,
-  questionType: 'multiple_choice' | 'essay'
-): string | null {
-  if (questionType === 'essay') return null;
-  if (!answer) return 'Correct answer is required for multiple-choice questions';
-  if (!/^[A-Ea-e]$/.test(answer)) return 'Correct answer must be a single letter (A-E)';
-  return null;
+export function validateAdaptedAlternatives(expectedCount: number, actualCount: number): string | null {
+  if (actualCount !== expectedCount) {
+    return `Expected ${expectedCount} alternatives, got ${actualCount}`
+  }
+  return null
 }
 
 /**
- * Validates adapted alternatives count matches original (CON-001)
- * @returns null if counts match, error message string if mismatch
+ * Safely parses a response that may be either JSON (for MC) or plain text (for essay)
+ * CON-003: JSON parse failure falls back to treating full response as plain text
  */
-export function validateAdaptedAlternatives(
-  expected: number,
-  actual: number
-): string | null {
-  if (expected === actual) return null;
-  return `Expected ${expected} alternatives, got ${actual}`;
-}
-
-/**
- * Safely parses a raw string as AdaptedAlternative array (CON-003 fallback)
- * @returns parsed array or null if input is not a valid JSON array of alternatives
- */
-export function safeParseAlternatives(
-  raw: string | null
-): AdaptedAlternative[] | null {
-  if (raw == null) return null;
+export function safeParseAlternatives(response: string | null): AdaptedAlternative[] | null {
+  if (!response) return null
 
   try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-    const result = z.array(adaptedAlternativeSchema).safeParse(parsed);
-    return result.success ? result.data : null;
+    const parsed = JSON.parse(response)
+
+    if (Array.isArray(parsed)) {
+      return parsed
+    }
+
+    // Also handle case where response is { adaptedAlternatives: [...] }
+    if (parsed.adaptedAlternatives && Array.isArray(parsed.adaptedAlternatives)) {
+      return parsed.adaptedAlternatives
+    }
+
+    return null
   } catch {
-    return null;
+    // Parse failed - this is expected for essay questions or malformed responses
+    return null
   }
 }
 
 /**
- * Builds LLM prompt for adapting a question with a given support strategy
- * MC questions: instructs JSON output with adaptedStatement + adaptedAlternatives
- * Essay questions: instructs plain text output
- * CON-002: instructs \n for line breaks in JSON
+ * Validates correct answer format for multiple-choice questions
+ * Valid: single letter A-E
  */
-export function buildAdaptationPrompt(
-  question: {
-    question_text: string;
-    alternatives?: Record<string, string> | null;
-    correct_answer?: string | null;
-  },
-  support: { name: string },
-  bncc: { skillCode: string; skillDescription: string }
-): string {
-  const isMC = identifyQuestionType(question) === 'multiple_choice';
-  const baseContext = [
-    `You are an educational content adaptation specialist.`,
-    `BNCC Skill: ${bncc.skillCode} — ${bncc.skillDescription}`,
-    `Support strategy: ${support.name}`,
-    `Original question: ${question.question_text}`,
-  ];
+export function validateCorrectAnswer(answer: string | undefined, isMC: boolean): string | null {
+  if (!isMC) return null
 
-  if (question.correct_answer) {
-    baseContext.push(`Correct answer: ${question.correct_answer}`);
+  if (!answer || answer.trim().length === 0) {
+    return 'Correct answer is required for multiple-choice questions'
   }
 
-  if (isMC && question.alternatives) {
-    const altList = Object.entries(question.alternatives)
-      .map(([key, val]) => `${key}) ${val}`)
-      .join('\n');
-    baseContext.push(`Original alternatives:\n${altList}`);
-    baseContext.push(
-      `Respond with a JSON object: { "adaptedStatement": "...", "adaptedAlternatives": [{ "label": "A", "text": "..." }, ...] }`,
-      `You MUST return exactly ${Object.keys(question.alternatives).length} alternatives.`,
-      `Use \\n for line breaks within JSON string values. Do NOT use actual newlines inside JSON strings.`,
-      `Preserve the BNCC skill in your adaptation. Make the question accessible using the "${support.name}" strategy.`
-    );
-  } else {
-    baseContext.push(
-      `Respond with plain text only — the adapted question statement.`,
-      `Do NOT wrap in JSON. Return only the adapted text.`,
-      `Preserve the BNCC skill in your adaptation. Make the question accessible using the "${support.name}" strategy.`
-    );
+  const normalized = answer.toUpperCase().trim()
+  if (!/^[A-E]$/.test(normalized)) {
+    return 'Correct answer must be a single letter (A-E)'
   }
 
-  return baseContext.join('\n\n');
+  return null
+}
+
+/**
+ * Identifies question type based on whether alternatives exist
+ */
+export function identifyQuestionType(alternatives: Record<string, string> | null): 'multiple_choice' | 'essay' {
+  return alternatives ? 'multiple_choice' : 'essay'
+}
+
+/**
+ * Validates Bloom level is one of the 6 cognitive levels
+ */
+export function isValidBloomLevel(level: string): level is BloomLevel {
+  const validLevels: BloomLevel[] = ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create']
+  return validLevels.includes(level.toLowerCase() as BloomLevel)
+}
+
+/**
+ * Extracts JSON object from a response that may contain markdown or extra text
+ * Used to handle Claude responses that may include markdown code fences
+ */
+export function extractJsonFromResponse(response: string): string {
+  // Try to find JSON object or array in the response
+  const jsonMatch = response.match(/\{[\s\S]*\}|\[[\s\S]*\]/)
+
+  if (jsonMatch) {
+    return jsonMatch[0]
+  }
+
+  // If no JSON found, return original (may be valid JSON or plain text)
+  return response
+}
+
+/**
+ * Builds system prompt for BNCC/Bloom analysis
+ */
+export function buildAnalysisSystemPrompt(): string {
+  return `You are a pedagogical AI expert specializing in the Brazilian national curriculum (BNCC - Base Nacional Comum Curricular) and Bloom's taxonomy of cognitive learning.
+
+Your task is to analyze educational questions and identify:
+1. BNCC skill code (e.g., EF06MA01) and description that this question targets
+2. Bloom's taxonomy cognitive level (remember, understand, apply, analyze, evaluate, or create)
+
+Respond with a JSON object containing:
+- skillCode: BNCC skill code (e.g., "EF06MA01")
+- skillDescription: Portuguese description of the BNCC skill
+- bloomLevel: One of the 6 Bloom levels (lowercase)
+- bloomJustification: Explanation of why this Bloom level was assigned`
+}
+
+/**
+ * Builds system prompt for adaptation generation
+ */
+export function buildAdaptationSystemPrompt(): string {
+  return `You are an educational content adaptation specialist working with the Brazilian national curriculum (BNCC).
+
+Your task is to adapt educational questions to make them accessible to students with different learning needs, while preserving the original learning objective and cognitive demand.
+
+For multiple-choice questions, respond with JSON containing the adapted question and adapted alternatives.
+For essay questions, respond with plain text only.
+
+Always maintain the pedagogical rigor and BNCC skill level of the original question.`
 }
