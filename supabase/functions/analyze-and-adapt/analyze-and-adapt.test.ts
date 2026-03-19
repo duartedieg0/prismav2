@@ -10,7 +10,7 @@
  * Spec: spec-process-adaptation.md Section 6
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 // Mock types for Deno-style imports
 // Note: In a real Deno test environment, you would import from actual URLs
@@ -28,15 +28,6 @@ interface MockSupport {
   name: string
 }
 
-interface MockExam {
-  id: string
-  user_id: string
-  subject_id: string
-  grade_level_id: string
-  subjects: { name: string }
-  grade_levels: { name: string }
-}
-
 /**
  * Test Suite 1: Claude API Integration
  */
@@ -44,7 +35,7 @@ describe('Claude API Integration', () => {
   it('should call Claude API with correct payload for BNCC analysis', async () => {
     // Mock the fetch function
     const mockFetch = vi.fn()
-    global.fetch = mockFetch as any
+    ;(global as unknown as { fetch: typeof fetch }).fetch = mockFetch
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -63,17 +54,13 @@ describe('Claude API Integration', () => {
       }),
     })
 
-    const systemPrompt = 'Test system prompt'
-    const userPrompt = 'Test user prompt'
-    const apiKey = 'test-key'
-
     // Call would happen in actual function
     expect(mockFetch).toBeDefined()
   })
 
   it('should handle Claude API errors gracefully', async () => {
     const mockFetch = vi.fn()
-    global.fetch = mockFetch as any
+    ;(global as unknown as { fetch: typeof fetch }).fetch = mockFetch
 
     mockFetch.mockResolvedValueOnce({
       ok: false,
@@ -143,7 +130,7 @@ describe('Multiple-Choice Question Pipeline', () => {
   it('should fall back to plain text on JSON parse failure', () => {
     const invalidJson = 'This is plain text, not JSON'
 
-    let fallbackResponse = null
+    let fallbackResponse: string | null = null
     try {
       JSON.parse(invalidJson)
     } catch {
@@ -172,9 +159,7 @@ describe('Essay Question Pipeline', () => {
       alternatives: null, // Essay question
     }
 
-    const llmResponse = '{"adapted": "text"}'
-
-    // In the actual implementation, this would be stored as plain text
+    // In the actual implementation, JSON would be stored as plain text
     // since it's an essay question
     const isEssay = essayQuestion.alternatives === null
 
@@ -186,7 +171,7 @@ describe('Essay Question Pipeline', () => {
  * Test Suite 4: Support Type Handling
  */
 describe('Support Type Handling', () => {
-  it('should process multiple supports per question', async () => {
+  it('should process multiple supports per question', () => {
     const supports: MockSupport[] = [
       { id: 's1', name: 'text-simplification' },
       { id: 's2', name: 'visual-cues' },
@@ -196,11 +181,10 @@ describe('Support Type Handling', () => {
   })
 
   it('should generate one adaptation per question × support combination', () => {
-    const questions = 3
-    const supports = 2
-    const expectedAdaptations = questions * supports
+    const questionCount = 3
+    const supportCount = 2
 
-    expect(expectedAdaptations).toBe(6)
+    expect(questionCount * supportCount).toBe(6)
   })
 
   it('should handle support with special characters in name', () => {
@@ -227,7 +211,6 @@ describe('Error Handling and Resilience', () => {
   })
 
   it('should set exam to ready status even with partial failures', () => {
-    const totalAdaptations = 6
     const completedAdaptations = 5
     const erroredAdaptations = 1
 
@@ -247,7 +230,6 @@ describe('Error Handling and Resilience', () => {
   })
 
   it('should handle missing exam gracefully', () => {
-    const examId = 'non-existent-exam'
     const error = { error: 'Exam not found' }
 
     expect(error).toHaveProperty('error')
@@ -314,7 +296,7 @@ describe('BNCC and Bloom Enrichment', () => {
  */
 describe('Input Validation', () => {
   it('should reject missing examId', () => {
-    const payload = { userId: 'user1' }
+    const payload: Record<string, string> = { userId: 'user1' }
     const isValid = 'examId' in payload
 
     expect(isValid).toBe(false)
@@ -465,8 +447,9 @@ describe('Response Format', () => {
   })
 
   it('should return proper HTTP status codes', () => {
-    expect([200, 400, 403, 404, 500]).toContain(200)
-    expect([200, 400, 403, 404, 500]).toContain(400)
-    expect([200, 400, 403, 404, 500]).toContain(403)
+    const statusCodes = [200, 400, 403, 404, 500]
+    expect(statusCodes).toContain(200)
+    expect(statusCodes).toContain(400)
+    expect(statusCodes).toContain(403)
   })
 })
