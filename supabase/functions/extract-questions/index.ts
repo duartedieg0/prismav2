@@ -12,8 +12,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 interface ExtractQuestionsPayload {
   examId: string
-  pdfUrl: string
-  examName: string
+  userId: string
+  pdfBase64: string
+  topic?: string
 }
 
 interface ExtractedQuestion {
@@ -26,24 +27,13 @@ interface ExtractedQuestion {
 
 
 /**
- * Fetch PDF from URL and extract text using pdf-parse
+ * Decode PDF from base64 and extract text using pdf-parse
  */
-async function extractTextFromPdf(pdfUrl: string): Promise<string> {
+async function extractTextFromPdf(pdfBase64: string): Promise<string> {
   try {
-    // Validate URL
-    const url = new URL(pdfUrl)
-    if (!url.protocol.match(/^https?:$/)) {
-      throw new Error('Invalid PDF URL protocol')
-    }
-
-    // Fetch PDF
-    const response = await fetch(pdfUrl)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch PDF: ${response.statusText}`)
-    }
-
-    const buffer = await response.arrayBuffer()
-    const bytes = new Uint8Array(buffer)
+    // Decode base64 PDF
+    const pdfBuffer = Uint8Array.from(atob(pdfBase64.split(',')[1] || pdfBase64), c => c.charCodeAt(0))
+    const bytes = pdfBuffer
 
     // Import pdf-parse for Deno
     const { default: pdfParse } = await import('https://deno.land/x/pdf@v1.8.1/mod.ts')
@@ -64,6 +54,14 @@ async function extractTextFromPdf(pdfUrl: string): Promise<string> {
 /**
  * Split extracted text into individual questions
  * Uses numbering patterns (1., 2., 3., etc.) and double newlines as delimiters
+ *
+ * TODO: Replace regex extraction with Claude vision API in Phase 2
+ * Current limitation: regex-based extraction works for standard formats but may fail on:
+ * - Complex multi-column layouts
+ * - Image-based questions
+ * - Non-Latin scripts
+ * This requires multimodal LLM integration (Claude vision) and may be better implemented
+ * as a Next.js API route instead of Edge Function for better resource management.
  */
 function splitIntoQuestions(text: string): string[] {
   // First try to split by numbered patterns like "1.", "2.", etc.
@@ -143,11 +141,11 @@ serve(async (req: Request) => {
 
   try {
     const payload: ExtractQuestionsPayload = await req.json()
-    const { examId, pdfUrl } = payload
+    const { examId, userId, pdfBase64 } = payload
 
     // Validate input
-    if (!examId || !pdfUrl) {
-      return jsonResponse({ success: false, error: 'Missing required fields: examId, pdfUrl', code: 'VALIDATION_ERROR' }, 400)
+    if (!examId || !userId || !pdfBase64) {
+      return jsonResponse({ success: false, error: 'Missing required fields: examId, userId, pdfBase64', code: 'VALIDATION_ERROR' }, 400)
     }
 
     // Initialize Supabase client with service role (for RLS bypass)
@@ -162,10 +160,18 @@ serve(async (req: Request) => {
       return jsonResponse({ success: false, examId, questionCount: 0, error: 'Exam not found', code: 'EXAM_NOT_FOUND' }, 404)
     }
 
+    // Verify user owns the exam
+    if (exam.user_id !== userId) {
+      return jsonResponse(
+        { error: 'Unauthorized', code: 'FORBIDDEN' },
+        403
+      )
+    }
+
     // Extract text from PDF
     let pdfText: string
     try {
-      pdfText = await extractTextFromPdf(pdfUrl)
+      pdfText = await extractTextFromPdf(pdfBase64)
     } catch (error) {
       // Update exam with error status
       await supabase
@@ -225,7 +231,7 @@ serve(async (req: Request) => {
           order_number: i + 1,
           alternatives: alternatives,
         })
-        .select('id')
+        .select('id, question_text, order_number, alternatives')
         .single()
 
       if (insertError) {
@@ -263,6 +269,7 @@ serve(async (req: Request) => {
       examId,
       questionCount: insertedQuestions.length,
       questions: insertedQuestions,
+      warnings: [],
     })
   } catch (error) {
     console.error('Extract questions error:', error)
