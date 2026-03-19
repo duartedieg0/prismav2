@@ -142,7 +142,7 @@ describe('GET /api/exams/[id]/result', () => {
       }),
     });
 
-    // Mock feedbacks query
+    // Mock feedbacks query with inner joins (adaptation -> question -> exam)
     mockFrom.mockReturnValueOnce({
       select: vi.fn().mockReturnValueOnce({
         eq: vi.fn().mockReturnValueOnce({
@@ -160,5 +160,8 @@ describe('GET /api/exams/[id]/result', () => {
 
     const response = await GET(request, { params: Promise.resolve({ id: 'exam-123' }) });
     expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.exam).toBeDefined();
+    expect(body.feedbacks).toBeDefined();
   });
 });

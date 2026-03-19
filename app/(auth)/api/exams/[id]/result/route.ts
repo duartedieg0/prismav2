@@ -76,10 +76,28 @@ export async function GET(
     }
 
     // Fetch all feedback for this exam
+    // feedbacks table has adaptation_id (not exam_id)
+    // Query: feedbacks -> adaptation_id -> question_id -> exam_id
     const { data: feedbacks, error: feedbackError } = await supabase
       .from('feedbacks')
-      .select('id, adaptation_id, rating, comment, created_at')
-      .eq('exam_id', id)
+      .select(
+        `
+        id,
+        adaptation_id,
+        rating,
+        comment,
+        created_at,
+        adaptations!inner(
+          id,
+          question_id,
+          questions!inner(
+            id,
+            exam_id
+          )
+        )
+      `
+      )
+      .eq('adaptations.questions.exam_id', id)
       .order('created_at', { ascending: false });
 
     if (feedbackError) {
@@ -90,10 +108,19 @@ export async function GET(
       );
     }
 
+    // Flatten feedbacks response (remove nested adaptation data for cleaner response)
+    const flattenedFeedbacks = feedbacks?.map((fb) => ({
+      id: fb.id,
+      adaptation_id: fb.adaptation_id,
+      rating: fb.rating,
+      comment: fb.comment,
+      created_at: fb.created_at,
+    })) || [];
+
     return Response.json(
       {
         exam,
-        feedbacks: feedbacks || [],
+        feedbacks: flattenedFeedbacks,
       },
       { status: 200 }
     );

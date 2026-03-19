@@ -49,12 +49,27 @@ export async function POST(
       throw error;
     }
 
-    // Verify adaptation exists
+    // Verify adaptation exists and belongs to correct exam
+    // Query: adaptation -> question -> exam (to verify exam ownership)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: adaptation } = await supabase
       .from('adaptations')
-      .select('id, exam_id')
+      .select(
+        `
+        id,
+        question_id,
+        questions!inner(
+          id,
+          exam_id,
+          exams!inner(
+            id,
+            user_id
+          )
+        )
+      `
+      )
       .eq('id', validated.adaptation_id)
-      .single();
+      .single() as any;
 
     if (!adaptation) {
       return Response.json(
@@ -64,14 +79,12 @@ export async function POST(
     }
 
     // Verify exam belongs to authenticated user
-    const { data: exam } = await supabase
-      .from('exams')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('id', adaptation.exam_id)
-      .single();
+    // When using inner joins with Supabase, the relationship is returned as a single object
+    const questionData = adaptation.questions as any;
+    const examData = questionData?.exams as any;
+    const examUserId = Array.isArray(examData) ? examData[0]?.user_id : examData?.user_id;
 
-    if (!exam) {
+    if (examUserId !== user.id) {
       return Response.json(
         { error: 'FORBIDDEN' },
         { status: 403 }

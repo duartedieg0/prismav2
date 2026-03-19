@@ -87,30 +87,20 @@ describe('POST /api/exams/[id]/feedback', () => {
     };
     vi.mocked(createClient).mockResolvedValueOnce(mockClient);
 
-    // Mock adaptation check
+    // Mock adaptation check with nested question and exam relationships
     mockFrom.mockReturnValueOnce({
       select: vi.fn().mockReturnValueOnce({
         eq: vi.fn().mockReturnValueOnce({
           single: vi.fn().mockResolvedValueOnce({
             data: {
               id: '550e8400-e29b-41d4-a716-446655440000',
-              exam_id: 'exam-123',
+              questions: {
+                id: 'question-123',
+                exam_id: 'exam-123',
+                exams: [{ id: 'exam-123', user_id: 'user-123' }],
+              },
             },
             error: null,
-          }),
-        }),
-      }),
-    });
-
-    // Mock exam authorization check
-    mockFrom.mockReturnValueOnce({
-      select: vi.fn().mockReturnValueOnce({
-        eq: vi.fn().mockReturnValueOnce({
-          eq: vi.fn().mockReturnValueOnce({
-            single: vi.fn().mockResolvedValueOnce({
-              data: { id: 'exam-123' },
-              error: null,
-            }),
           }),
         }),
       }),
@@ -161,30 +151,20 @@ describe('POST /api/exams/[id]/feedback', () => {
     };
     vi.mocked(createClient).mockResolvedValueOnce(mockClient);
 
-    // Mock adaptation check
+    // Mock adaptation check with nested relationships
     mockFrom.mockReturnValueOnce({
       select: vi.fn().mockReturnValueOnce({
         eq: vi.fn().mockReturnValueOnce({
           single: vi.fn().mockResolvedValueOnce({
             data: {
               id: '550e8400-e29b-41d4-a716-446655440000',
-              exam_id: 'exam-123',
+              questions: {
+                id: 'question-123',
+                exam_id: 'exam-123',
+                exams: [{ id: 'exam-123', user_id: 'user-123' }],
+              },
             },
             error: null,
-          }),
-        }),
-      }),
-    });
-
-    // Mock exam authorization check
-    mockFrom.mockReturnValueOnce({
-      select: vi.fn().mockReturnValueOnce({
-        eq: vi.fn().mockReturnValueOnce({
-          eq: vi.fn().mockReturnValueOnce({
-            single: vi.fn().mockResolvedValueOnce({
-              data: { id: 'exam-123' },
-              error: null,
-            }),
           }),
         }),
       }),
@@ -286,30 +266,20 @@ describe('POST /api/exams/[id]/feedback', () => {
     };
     vi.mocked(createClient).mockResolvedValueOnce(mockClient);
 
-    // Mock adaptation check - found
+    // Mock adaptation check - found but belongs to different user
     mockFrom.mockReturnValueOnce({
       select: vi.fn().mockReturnValueOnce({
         eq: vi.fn().mockReturnValueOnce({
           single: vi.fn().mockResolvedValueOnce({
             data: {
               id: '550e8400-e29b-41d4-a716-446655440000',
-              exam_id: 'exam-456',
+              questions: {
+                id: 'question-123',
+                exam_id: 'exam-456',
+                exams: [{ id: 'exam-456', user_id: 'other-user' }],
+              },
             },
             error: null,
-          }),
-        }),
-      }),
-    });
-
-    // Mock exam check - not found (doesn't belong to user)
-    mockFrom.mockReturnValueOnce({
-      select: vi.fn().mockReturnValueOnce({
-        eq: vi.fn().mockReturnValueOnce({
-          eq: vi.fn().mockReturnValueOnce({
-            single: vi.fn().mockResolvedValueOnce({
-              data: null,
-              error: null,
-            }),
           }),
         }),
       }),
