@@ -38,7 +38,7 @@ describe('GET /api/exams/[id]/result', () => {
       method: 'GET',
     });
 
-    const response = await GET(request, { params: { id: 'test' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'test' }) });
     expect(response.status).toBe(401);
   });
 
@@ -62,8 +62,103 @@ describe('GET /api/exams/[id]/result', () => {
       method: 'GET',
     });
 
-    const response = await GET(request, { params: { id: 'test' } });
+    const response = await GET(request, { params: Promise.resolve({ id: 'test' }) });
     // Should return a valid response (could be 200, 404, or 500 depending on data)
     expect([200, 404, 500]).toContain(response.status);
+  });
+
+  it('should return 404 if exam status is not ready', async () => {
+    const { createClient } = await import('@/lib/supabase/server');
+    const mockFrom = vi.fn();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockClient: any = {
+      auth: {
+        getUser: vi.fn().mockResolvedValueOnce({
+          data: { user: { id: 'user-123' } },
+        }),
+      },
+      from: mockFrom,
+    };
+    vi.mocked(createClient).mockResolvedValueOnce(mockClient);
+
+    // Mock exam with status = 'processing'
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValueOnce({
+        eq: vi.fn().mockReturnValueOnce({
+          eq: vi.fn().mockReturnValueOnce({
+            single: vi.fn().mockResolvedValueOnce({
+              data: {
+                id: 'exam-123',
+                status: 'processing',
+                title: 'Test Exam',
+              },
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    });
+
+    const request = new Request('http://localhost/api/exams/test/result', {
+      method: 'GET',
+    });
+
+    const response = await GET(request, { params: Promise.resolve({ id: 'exam-123' }) });
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.error).toBe('Exam not ready');
+  });
+
+  it('should return 200 if exam status is ready', async () => {
+    const { createClient } = await import('@/lib/supabase/server');
+    const mockFrom = vi.fn();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockClient: any = {
+      auth: {
+        getUser: vi.fn().mockResolvedValueOnce({
+          data: { user: { id: 'user-123' } },
+        }),
+      },
+      from: mockFrom,
+    };
+    vi.mocked(createClient).mockResolvedValueOnce(mockClient);
+
+    // Mock exam with status = 'ready'
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValueOnce({
+        eq: vi.fn().mockReturnValueOnce({
+          eq: vi.fn().mockReturnValueOnce({
+            single: vi.fn().mockResolvedValueOnce({
+              data: {
+                id: 'exam-123',
+                status: 'ready',
+                title: 'Test Exam',
+                questions: [],
+              },
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    });
+
+    // Mock feedbacks query
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValueOnce({
+        eq: vi.fn().mockReturnValueOnce({
+          order: vi.fn().mockResolvedValueOnce({
+            data: [],
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const request = new Request('http://localhost/api/exams/test/result', {
+      method: 'GET',
+    });
+
+    const response = await GET(request, { params: Promise.resolve({ id: 'exam-123' }) });
+    expect(response.status).toBe(200);
   });
 });
