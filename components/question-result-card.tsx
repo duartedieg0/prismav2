@@ -44,14 +44,17 @@ export default function QuestionResultCard({
   const [copyFeedback, setCopyFeedback] = useState('');
 
   const handleCopy = async () => {
-    const text = formatQuestionForClipboard({
-      question_text: adaptation.adapted_statement,
-      alternatives: adaptation.adapted_alternatives
-        ? Object.fromEntries(
-            adaptation.adapted_alternatives.map((alt) => [alt.label, alt.text])
-          )
-        : null,
-    });
+    const text = formatQuestionForClipboard(
+      {
+        question_text: adaptation.adapted_statement,
+        alternatives: adaptation.adapted_alternatives
+          ? Object.fromEntries(
+              adaptation.adapted_alternatives.map((alt) => [alt.label, alt.text])
+            )
+          : null,
+      },
+      question.correct_answer
+    );
 
     const success = await copyToClipboard(text);
     if (success) {
@@ -176,10 +179,11 @@ export default function QuestionResultCard({
             onChange={(e) => setComment(e.target.value)}
             disabled={isSubmitting}
             className="min-h-24"
-            maxLength={1000}
+            maxLength={5000}
+            aria-label="Comment text area, maximum 5000 characters"
           />
           <div className="text-xs text-gray-500 text-right">
-            {comment.length}/1000
+            {comment.length}/5000
           </div>
         </div>
 
