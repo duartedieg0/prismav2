@@ -2,6 +2,19 @@ import { createClient } from '@/lib/supabase/server';
 import { saveFeedbackSchema } from '@/lib/schemas/feedback';
 import { ZodError } from 'zod';
 
+interface AdaptationWithRelationships {
+  id: string;
+  question_id: string;
+  questions: {
+    id: string;
+    exam_id: string;
+    exams: {
+      id: string;
+      user_id: string;
+    };
+  };
+}
+
 /**
  * POST /api/exams/[id]/feedback
  * Saves teacher feedback on adapted question (fire-and-forget endpoint)
@@ -35,7 +48,7 @@ export async function POST(
     }
 
     // Parse JSON body
-    const body = await request.json();
+    const body = await request.json() as unknown;
 
     // Validate input with Zod schema
     let validated;
@@ -51,7 +64,6 @@ export async function POST(
 
     // Verify adaptation exists and belongs to correct exam
     // Query: adaptation -> question -> exam (to verify exam ownership)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: adaptation } = await supabase
       .from('adaptations')
       .select(
@@ -69,7 +81,7 @@ export async function POST(
       `
       )
       .eq('id', validated.adaptation_id)
-      .single() as any;
+      .single() as { data: AdaptationWithRelationships | null };
 
     if (!adaptation) {
       return Response.json(
@@ -80,8 +92,8 @@ export async function POST(
 
     // Verify exam belongs to authenticated user
     // When using inner joins with Supabase, the relationship is returned as a single object
-    const questionData = adaptation.questions as any;
-    const examData = questionData?.exams as any;
+    const questionData = adaptation.questions;
+    const examData = questionData?.exams;
     const examUserId = Array.isArray(examData) ? examData[0]?.user_id : examData?.user_id;
 
     if (examUserId !== user.id) {

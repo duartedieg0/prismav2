@@ -17,7 +17,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
 import { Pencil, Trash2 } from 'lucide-react';
-import { AiModelsManagementClient } from '@/components/admin/ai-models-management';
+import { AIModelsManagementClient } from '@/components/admin/ai-models-management';
 
 interface AiModel {
   id: string;
@@ -79,7 +79,7 @@ export default async function AiModelsPage() {
               Gerencie os modelos de inteligência artificial disponíveis no sistema
             </p>
           </div>
-          <AiModelsManagementClient initialModels={models} />
+          <AIModelsManagementClient initialModels={models} />
         </div>
 
         {/* Models Table */}

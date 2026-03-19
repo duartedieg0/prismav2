@@ -266,7 +266,7 @@ describe('ProcessingPage (Server Component)', () => {
         await ProcessingPage({
           params: Promise.resolve({ id: examId }),
         });
-      } catch (e) {
+      } catch {
         expect(redirect).toHaveBeenCalledWith(`/exams/${examId}`);
       }
     });
@@ -304,7 +304,7 @@ describe('ProcessingPage (Server Component)', () => {
         await ProcessingPage({
           params: Promise.resolve({ id: examId }),
         });
-      } catch (e) {
+      } catch {
         expect(redirect).toHaveBeenCalledWith(`/exams/${examId}`);
       }
     });
@@ -342,7 +342,7 @@ describe('ProcessingPage (Server Component)', () => {
         await ProcessingPage({
           params: Promise.resolve({ id: examId }),
         });
-      } catch (e) {
+      } catch {
         expect(redirect).toHaveBeenCalledWith(`/exams/${examId}`);
       }
     });

@@ -21,9 +21,9 @@ interface AgentsManagementClientProps {
   initialAgents: Agent[];
 }
 
-export function AgentsManagementClient(
-  props: AgentsManagementClientProps
-) {
+export function AgentsManagementClient({
+  initialAgents: _initialAgents,
+}: AgentsManagementClientProps) {
   return (
     <Button className="gap-2" disabled>
       <Plus className="w-4 h-4" />

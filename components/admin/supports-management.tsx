@@ -20,9 +20,9 @@ interface SupportsManagementClientProps {
   initialSupports: Support[];
 }
 
-export function SupportsManagementClient(
-  props: SupportsManagementClientProps
-) {
+export function SupportsManagementClient({
+  initialSupports: _initialSupports,
+}: SupportsManagementClientProps) {
   return (
     <Button className="gap-2" disabled>
       <Plus className="w-4 h-4" />

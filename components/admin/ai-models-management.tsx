@@ -8,7 +8,7 @@
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
-interface AiModel {
+interface AIModel {
   id: string;
   name: string;
   description: string | null;
@@ -17,13 +17,13 @@ interface AiModel {
   updated_at: string;
 }
 
-interface AiModelsManagementClientProps {
-  initialModels: AiModel[];
+interface AIModelsManagementClientProps {
+  initialModels: AIModel[];
 }
 
-export function AiModelsManagementClient(
-  props: AiModelsManagementClientProps
-) {
+export function AIModelsManagementClient({
+  initialModels: _initialModels,
+}: AIModelsManagementClientProps) {
   return (
     <Button className="gap-2" disabled>
       <Plus className="w-4 h-4" />

@@ -296,7 +296,7 @@ describe('QuestionInput', () => {
 
     it('should apply error styling to essay question', () => {
       const onChange = vi.fn();
-      const { container } = render(
+      const { container: _container } = render(
         <QuestionInput
           question={mockEssayQuestion}
           questionNumber={2}

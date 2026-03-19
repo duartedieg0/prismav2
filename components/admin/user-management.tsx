@@ -1,27 +1,31 @@
 /**
  * User Management Client Component
- * Placeholder for user management operations
+ * Placeholder for CRUD operations on users
  */
 
 'use client';
 
-interface UserProfile {
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+
+interface User {
   id: string;
   email: string;
-  full_name: string | null;
-  role: 'admin' | 'teacher' | 'user';
-  blocked: boolean;
+  role: string;
   created_at: string;
 }
 
 interface UserManagementClientProps {
-  initialUsers: UserProfile[];
+  initialUsers: User[];
 }
 
-export function UserManagementClient(
-  props: UserManagementClientProps
-) {
-  // Client-side component for search/filter functionality
-  // To be implemented with search and filtering logic
-  return null;
+export function UserManagementClient({
+  initialUsers: _initialUsers,
+}: UserManagementClientProps) {
+  return (
+    <Button className="gap-2" disabled>
+      <Plus className="w-4 h-4" />
+      Adicionar Usuário
+    </Button>
+  );
 }

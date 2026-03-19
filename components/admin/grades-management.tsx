@@ -19,9 +19,9 @@ interface GradesManagementClientProps {
   initialGrades: GradeLevel[];
 }
 
-export function GradesManagementClient(
-  props: GradesManagementClientProps
-) {
+export function GradesManagementClient({
+  initialGrades: _initialGrades,
+}: GradesManagementClientProps) {
   return (
     <Button className="gap-2" disabled>
       <Plus className="w-4 h-4" />

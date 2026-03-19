@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Tests for ExtractionForm component
  * Includes rendering, form validation, submission, and accessibility tests
