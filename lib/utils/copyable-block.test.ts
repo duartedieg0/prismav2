@@ -69,6 +69,55 @@ describe('copyable-block utilities', () => {
       expect(result).toContain('c) 5');
     });
 
+    it('should add ✓ marker to correct alternative', () => {
+      const result = formatQuestionForClipboard(
+        {
+          question_text: 'What is 2 + 2?',
+          alternatives: {
+            a: '3',
+            b: '4',
+            c: '5',
+          },
+        },
+        'b'
+      );
+
+      expect(result).toContain('b) 4 ✓');
+      expect(result).not.toContain('a) 3 ✓');
+      expect(result).not.toContain('c) 5 ✓');
+    });
+
+    it('should handle uppercase correct answer letter', () => {
+      const result = formatQuestionForClipboard(
+        {
+          question_text: 'Question text',
+          alternatives: {
+            a: 'Option A',
+            b: 'Option B',
+          },
+        },
+        'B'
+      );
+
+      expect(result).toContain('b) Option B ✓');
+      expect(result).not.toContain('a) Option A ✓');
+    });
+
+    it('should handle correct answer with ) character', () => {
+      const result = formatQuestionForClipboard(
+        {
+          question_text: 'Question text',
+          alternatives: {
+            a: 'First',
+            b: 'Second',
+          },
+        },
+        'b)'
+      );
+
+      expect(result).toContain('b) Second ✓');
+    });
+
     it('should format essay question without alternatives', () => {
       const result = formatQuestionForClipboard({
         question_text: 'Explain photosynthesis.',

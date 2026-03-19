@@ -25,17 +25,27 @@ export async function copyToClipboard(text: string): Promise<boolean> {
  * Format question with alternatives for clipboard
  * Converts question + alternatives into readable text format
  * @param question Object with question_text and alternatives
+ * @param correctAnswer Optional correct answer marker (e.g., 'B', 'b', or 'b)')
  * @returns Formatted text ready for clipboard
  */
-export function formatQuestionForClipboard(question: {
-  question_text: string;
-  alternatives: Record<string, string> | null;
-}): string {
+export function formatQuestionForClipboard(
+  question: {
+    question_text: string;
+    alternatives: Record<string, string> | null;
+  },
+  correctAnswer?: string | null
+): string {
   const { question_text, alternatives } = question;
 
   // If no alternatives (essay question), return just the question
   if (!alternatives || Object.keys(alternatives).length === 0) {
     return question_text;
+  }
+
+  // Normalize correctAnswer to lowercase single letter (handle 'B', 'b', 'b)')
+  let normalizedCorrect: string | null = null;
+  if (correctAnswer) {
+    normalizedCorrect = correctAnswer.toLowerCase().charAt(0);
   }
 
   // Format as multi-line with alternatives
@@ -47,7 +57,14 @@ export function formatQuestionForClipboard(question: {
   );
 
   formatted += sortedEntries
-    .map(([key, text]) => `${key}) ${text}`)
+    .map(([key, text]) => {
+      const alternativeLine = `${key}) ${text}`;
+      // Add ✓ marker if this is the correct answer
+      if (normalizedCorrect && key.toLowerCase() === normalizedCorrect) {
+        return `${alternativeLine} ✓`;
+      }
+      return alternativeLine;
+    })
     .join('\n');
 
   return formatted;
