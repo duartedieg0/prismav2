@@ -176,7 +176,11 @@ serve(async (req) => {
           )
         } catch (err) {
           console.error(`Pipeline error for question ${question.id}:`, err)
-          totalErrored++
+          // Mark all adaptations for this question as 'error' so they don't stay 'pending'
+          for (const support of supports) {
+            await setAdaptationError(supabase, question.id, support.id, `Analysis failed: ${String(err)}`)
+          }
+          totalErrored += supports.length
         }
       })
     )
