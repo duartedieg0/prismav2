@@ -21,7 +21,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  // Note: 'id' param is in the signature for routing but we use adaptation.exam_id for validation
+  await params;
   try {
     const supabase = await createClient();
 
@@ -30,7 +31,7 @@ export async function POST(
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      return Response.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
     }
 
     // Parse JSON body
@@ -43,25 +44,57 @@ export async function POST(
     } catch (error) {
       if (error instanceof ZodError) {
         const message = error.issues[0]?.message || 'Validation error';
-        return Response.json({ error: message }, { status: 400 });
+        return Response.json({ error: 'VALIDATION_ERROR', details: message }, { status: 400 });
       }
       throw error;
     }
 
-    // Save feedback to database
-    const { data: feedback, error: insertError } = await supabase
+    // Verify adaptation exists
+    const { data: adaptation } = await supabase
+      .from('adaptations')
+      .select('id, exam_id')
+      .eq('id', validated.adaptation_id)
+      .single();
+
+    if (!adaptation) {
+      return Response.json(
+        { error: 'ADAPTATION_NOT_FOUND' },
+        { status: 404 }
+      );
+    }
+
+    // Verify exam belongs to authenticated user
+    const { data: exam } = await supabase
+      .from('exams')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('id', adaptation.exam_id)
+      .single();
+
+    if (!exam) {
+      return Response.json(
+        { error: 'FORBIDDEN' },
+        { status: 403 }
+      );
+    }
+
+    // Upsert feedback to database (replace if already exists for this adaptation+user)
+    const { error: upsertError } = await supabase
       .from('feedbacks')
-      .insert({
-        exam_id: id,
+      .upsert({
         adaptation_id: validated.adaptation_id,
+        user_id: user.id,
         rating: validated.rating || null,
         comment: validated.comment || null,
+        dismissed_from_evolution: false,
+      }, {
+        onConflict: 'adaptation_id,user_id',
       })
       .select()
       .single();
 
-    if (insertError || !feedback) {
-      console.error('Failed to save feedback:', insertError);
+    if (upsertError) {
+      console.error('Failed to save feedback:', upsertError);
       return Response.json(
         { error: 'Failed to save feedback' },
         { status: 500 }
@@ -69,16 +102,8 @@ export async function POST(
     }
 
     return Response.json(
-      {
-        success: true,
-        feedback: {
-          id: feedback.id,
-          adaptation_id: feedback.adaptation_id,
-          rating: feedback.rating,
-          comment: feedback.comment,
-        },
-      },
-      { status: 201 }
+      { ok: true },
+      { status: 200 }
     );
   } catch (error) {
     console.error('POST /api/exams/[id]/feedback error:', error);
