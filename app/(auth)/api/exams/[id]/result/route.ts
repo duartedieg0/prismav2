@@ -23,7 +23,7 @@ export async function GET(
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      return Response.json({ error: 'UNAUTHENTICATED' }, { status: 401 });
     }
 
     // Fetch exam with all related data
@@ -68,6 +68,11 @@ export async function GET(
 
     if (examError || !exam) {
       return Response.json({ error: 'Exam not found' }, { status: 404 });
+    }
+
+    // Verify exam is ready for viewing
+    if (exam.status !== 'ready') {
+      return Response.json({ error: 'Exam not ready' }, { status: 404 });
     }
 
     // Fetch all feedback for this exam
