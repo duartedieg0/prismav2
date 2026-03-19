@@ -8,6 +8,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    exclude: ['node_modules', '.next', 'supabase', 'e2e'],
     coverage: {
       provider: 'v8',
       thresholds: { functions: 80, lines: 80 },
