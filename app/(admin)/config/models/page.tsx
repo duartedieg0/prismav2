@@ -16,7 +16,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { AiModelsManagementClient } from '@/components/admin/ai-models-management';
 
 interface AiModel {

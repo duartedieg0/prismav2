@@ -53,13 +53,13 @@ async function fetchAgents(): Promise<Agent[]> {
     return [];
   }
 
-  return agents.map((agent: any) => ({
-    id: agent.id,
-    name: agent.name,
-    model_id: agent.model_id,
-    model_name: agent.ai_models?.name,
-    created_at: agent.created_at,
-    updated_at: agent.updated_at,
+  return agents.map((agent: Record<string, unknown>) => ({
+    id: agent.id as string,
+    name: agent.name as string,
+    model_id: agent.model_id as string | null,
+    model_name: (agent.ai_models as Record<string, unknown>)?.name as string | null,
+    created_at: agent.created_at as string,
+    updated_at: agent.updated_at as string,
   })) as Agent[];
 }
 
