@@ -2,7 +2,7 @@
 title: AI Analysis and Adaptation Process
 version: 1.0
 date_created: 2026-03-18
-last_updated: 2026-03-18
+last_updated: 2026-03-19
 owner: PRISMA Team
 tags: [process, adaptation, bncc, bloom, llm, edge-function, async]
 ---
@@ -70,6 +70,7 @@ This document specifies the AI analysis and adaptation process for the PRISMA ("
 | CON-001 | `adaptedAlternatives.length` MUST equal original `alternatives.length`; mismatch sets adaptation status to `'error'` |
 | CON-002 | LLM prompt MUST instruct use of `\n` for line breaks in JSON responses (prevent parse errors) |
 | CON-003 | JSON parse failure falls back to treating full response as plain text + logs warning |
+| CON-004 | `POST /api/exams/[id]/answers`: `correctAnswer` is **required** for multiple-choice questions (`alternatives` is not null) and **optional** for essay questions (`alternatives` is null). Submission without answers for any MC question returns `400 VALIDATION_ERROR` |
 | SEC-001 | Edge Function uses Supabase service role key; `api_key` for LLM models never exposed to client |
 
 ### Global Project Constraints
@@ -300,16 +301,22 @@ export const adaptationResponseSchema = z.union([
 
 export type AdaptationResponse = z.infer<typeof adaptationResponseSchema>;
 
+export const submitAnswerOptionalSchema = z.object({
+  questionId: z.string().uuid('Invalid question ID'),
+  correctAnswer: z.string().min(1).optional(),  // optional for essay questions
+});
+
 export const submitAnswersSchema = z.object({
-  answers: z.array(
-    z.object({
-      questionId: z.string().uuid('Invalid question ID'),
-      correctAnswer: z.string().min(1, 'Correct answer is required'),
-    })
-  ).min(1, 'At least one answer is required'),
+  answers: z.array(submitAnswerOptionalSchema).min(1, 'At least one answer is required'),
 });
 
 export type SubmitAnswersInput = z.infer<typeof submitAnswersSchema>;
+
+// Route handler additionally validates:
+// - every MC question (alternatives != null) has a non-empty correctAnswer
+// - every questionId exists in this exam's questions
+// - no duplicate questionIds
+// These checks require DB state and cannot be expressed in Zod alone.
 ```
 
 ### 4.4 API Contracts
@@ -317,6 +324,14 @@ export type SubmitAnswersInput = z.infer<typeof submitAnswersSchema>;
 #### `POST /api/exams/[id]/answers`
 
 Accepts teacher-provided correct answers per question. Creates one `adaptation` record per question × support (status `pending`), then triggers the `analyze-and-adapt` Edge Function asynchronously.
+
+**Validation rules:**
+1. Request body must pass `submitAnswersSchema` (Zod)
+2. Every multiple-choice question (with `alternatives`) in this exam MUST have a corresponding `correctAnswer` entry — missing MC answers return `400`
+3. Essay questions (without `alternatives`) MAY omit `correctAnswer` — if omitted, adaptation runs without it
+4. Each `questionId` must reference an existing question belonging to this exam
+5. Duplicate `questionId` entries are rejected
+6. If any validation fails, return `400 { error: "VALIDATION_ERROR", details: "..." }` with specific field errors
 
 **Request**
 ```
@@ -406,23 +421,36 @@ interface AnalyzeAndAdaptResponse {
 }
 ```
 
-**Processing flow per question:**
-1. Fetch BNCC skill and Bloom level via LLM call (parallel across all questions via `Promise.all`)
-2. Update `questions` table with `bncc_skill_code`, `bncc_skill_description`, `bloom_level`, `bloom_justification` (requires migration to add these columns to `questions`)
-3. For each support linked to the exam via `exam_supports`:
-   a. Build adaptation prompt (MC vs. essay branch)
-   b. Call LLM; parse response with `adaptationResponseSchema`
-   c. Validate `adaptedAlternatives.length` === `alternatives.length` (CON-001)
-   d. On success: update `adaptations` record — status `completed`, store adapted content
-   e. On JSON parse failure: store raw text as `adapted_statement`, log warning (CON-003)
-   f. On count mismatch or fatal error: update `adaptations` record — status `error`, store `error_message`
-4. After all adaptations: if all completed → `exams.status = 'ready'`; if any errored → `exams.status = 'ready'` (partial success allowed; individual records track error state)
+**Processing flow (pipeline per question):**
 
-**Side effects on DB:**
-1. Sets each `adaptations.status = 'processing'` on start per record
-2. Writes analysis results to `questions` (requires new columns — see migration note in Section 4.1)
-3. Writes adapted content to `adaptations` records
-4. Sets `exams.status = 'ready'` on completion
+All questions are processed in parallel via `Promise.all`. Each question runs its own pipeline: analysis first, then adaptations. There is no global phase gate — question B's adaptations can start before question A's analysis finishes.
+
+For each question (parallel via `Promise.all`):
+
+**Stage 1 — Analysis (once per question):**
+1. Send question text + correct answer (if provided) + subject + grade level to LLM
+2. Parse response with `bnccAnalysisSchema` and `bloomAnalysisSchema`
+3. Update `questions` row: set `bncc_skill_code`, `bncc_skill_description`, `bloom_level`, `bloom_justification`
+
+**Stage 2 — Adaptation (once per support, parallel within this question):**
+After Stage 1 completes for this question, all supports linked via `exam_supports` are processed in parallel:
+
+4. For each support (parallel via `Promise.all`):
+   a. Set `adaptations.status = 'processing'` for this record
+   b. Build adaptation prompt (MC vs. essay branch) including the BNCC skill from Stage 1
+   c. Call LLM; parse response with `adaptationResponseSchema`
+   d. For MC: validate `adaptedAlternatives.length` === `alternatives.length` (CON-001)
+   e. On success: update `adaptations` record — status `completed`, store adapted content
+   f. On JSON parse failure: store raw text as `adapted_statement`, log warning (CON-003)
+   g. On count mismatch or fatal error: update `adaptations` record — status `error`, store `error_message`
+
+**After all question pipelines resolve:**
+5. If all `adaptations` completed → `exams.status = 'ready'`; if any errored → `exams.status = 'ready'` (partial success allowed; individual `adaptations` records track error state)
+
+**Side effects on DB (per question pipeline):**
+1. **Stage 1:** Writes `bncc_skill_code`, `bncc_skill_description`, `bloom_level`, `bloom_justification` to this question's row (requires new columns — see migration note in Section 4.1)
+2. **Stage 2:** Sets each `adaptations.status = 'processing'` → then `'completed'` or `'error'`; writes `adapted_statement`, `adapted_alternatives`, `error_message` as applicable
+3. **After all pipelines:** Sets `exams.status = 'ready'` on completion
 
 > **Migration note:** `analyze-and-adapt` also requires adding BNCC/Bloom columns to the `questions` table. This requires a new migration (not yet written):
 > ```sql
@@ -448,6 +476,8 @@ interface AnalyzeAndAdaptResponse {
 | AC-005 | Exam in any status other than `awaiting_answers` | `POST /api/exams/[id]/answers` | Response `409 { error: "INVALID_STATUS" }` |
 | AC-006 | Unauthenticated request | `POST /api/exams/[id]/answers` | Response `401 { error: "UNAUTHENTICATED" }` |
 | AC-007 | Authenticated teacher accesses exam belonging to another user | `POST /api/exams/[id]/answers` | Response `403 { error: "FORBIDDEN" }` |
+| AC-008 | Exam has 3 MC questions and 2 essay questions; teacher submits answers for all 3 MC but omits both essays | `POST /api/exams/[id]/answers` | Response `200 { ok: true }`; 5 question pipelines triggered; essay adaptations use enunciado only |
+| AC-009 | Exam has 3 MC questions; teacher submits answers for only 2 MC | `POST /api/exams/[id]/answers` | Response `400 { error: "VALIDATION_ERROR", details: "Missing correctAnswer for 1 multiple-choice question" }`; no adaptation records created; `exams.status` unchanged |
 
 ---
 
@@ -593,7 +623,7 @@ The following checklist must be verified before this spec is considered implemen
 - [x] Frontmatter complete: `title`, `version`, `date_created`, `last_updated`, `owner`, `tags`
 - [x] All 11 sections present (Introduction through Related Specifications)
 - [x] Global Constraints block present verbatim in Section 3
-- [x] All feature REQs (REQ-001 through SEC-001) traceable to PRD F6
+- [x] All feature REQs (REQ-001 through SEC-001) and constraints (CON-001 through CON-004) traceable to PRD F6
 - [x] Section 4 includes:
   - [x] Current SQL schema for `adaptations` (from existing migration)
   - [x] Target SQL schema changes for `adaptations` (clearly marked as requiring new migration)
@@ -605,7 +635,7 @@ The following checklist must be verified before this spec is considered implemen
   - [x] API contract: `POST /api/exams/[id]/answers` (body: answers array → `{ ok: true }`)
   - [x] API contract: `GET /api/exams/[id]/adaptation-status` (polling endpoint)
   - [x] Edge Function `analyze-and-adapt` input/output contract with detailed processing flow
-- [x] Section 5 has ≥ 5 ACs in Given-When-Then format (7 ACs present)
+- [x] Section 5 has ≥ 5 ACs in Given-When-Then format (9 ACs present)
 - [x] Section 6 has all 3 test layers with specific named test cases
 - [x] Section 11 references at least 3 related specs
 
