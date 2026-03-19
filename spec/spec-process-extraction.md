@@ -7,63 +7,52 @@ owner: PRISMA Team
 tags: [process, extraction, ocr, llm, edge-function, supabase]
 ---
 
-# Introduction
+# 1. Introduction
 
 This specification defines the PDF extraction process: receiving a teacher-uploaded PDF, converting it to images, extracting questions via a multimodal LLM, and persisting the result to Postgres. This is the entry point of the exam adaptation workflow; all downstream specs depend on the contracts defined here.
 
----
+# 2. Purpose & Scope
 
-## Section 1: Purpose & Scope
+## Purpose
 
-### Purpose
+Enable teachers to upload PDF exam files and automatically extract structured question data (text, type, alternatives) using OCR and multimodal LLM analysis. The extracted questions are then persisted to the database, allowing teachers to review, correct, and enrich the data before proceeding to adaptation.
 
-This document specifies the complete PDF extraction process for the PRISMA ("Adapte Minha Prova") platform. It defines the API surface, data contracts, database schema changes, and acceptance criteria required to implement the feature described in PRD F5.
+## In Scope
 
-### In Scope
+- POST `/api/exams` route handler for PDF upload and exam creation
+- Supabase Storage upload with RLS enforcement
+- `extract-questions` Edge Function (Supabase Deno runtime)
+- `<ExtractionStatus>` React component for monitoring extraction progress
+- Exam status polling mechanism (polling-based status updates)
+- Status enum expansion: `draft` → `uploading` → `processing` → `awaiting_answers` → `ready` → `error`
 
-- `POST /api/exams` route handler (FormData upload, exam record creation, Storage upload, Edge Function invocation)
-- Supabase Storage upload to the `exams` bucket
-- `extract-questions` Edge Function (multimodal LLM call, question parsing, exam status transitions)
-- `ExtractionStatus` component (client-side polling of exam status)
-- `GET /api/exams/[id]/status` status polling endpoint
-- `ExamStatus` enum, `Exam`, `Question`, `ExtractionResult`, and `ExamWithJoins` TypeScript types
-- Exam status lifecycle: `draft → uploading → processing → awaiting_answers | error`
+## Out of Scope
 
-### Out of Scope
+- BNCC/Bloom analysis and question tagging (spec-process-adaptation.md)
+- Result display and question editing UI (spec-process-result.md)
+- New exam form UI and subject/grade selection (spec-process-new-exam.md)
+- Tesseract/local OCR; always use multimodal LLM
+- Question answer validation or auto-grading
 
-- BNCC/Bloom taxonomy analysis and adaptation logic — see `spec-process-adaptation.md`
-- Side-by-side result display with adapted questions — see `spec-process-result.md`
-- New-exam form UI (subject/grade_level selection, file picker) — see `spec-process-new-exam.md`
+# 3. Definitions, Global Constraints & Feature Requirements
 
----
+## Definitions
 
-## Section 2: Definitions
+**ExamStatus**: Enum of six states:
+- `draft` — Exam created, no PDF uploaded
+- `uploading` — PDF being uploaded to Storage
+- `processing` — PDF being processed by extract-questions Edge Function
+- `awaiting_answers` — Extraction complete; teacher providing correct answers
+- `ready` — Extraction complete, correct answers supplied, ready for adaptation
+- `error` — Extraction failed; error_message populated
 
-| Term | Definition |
-|------|-----------|
-| `ExamStatus` | Enum with 6 values: `draft`, `uploading`, `processing`, `awaiting_answers`, `ready`, `error` |
-| OCR | Optical Character Recognition — extracting text from scanned/image-based PDF pages |
-| LLM Multimodal | Large Language Model capable of processing both text and image inputs (e.g., GPT-4o) |
-| `extraction_warning` | Non-fatal warning stored on the `exams` record when some pages fail OCR but others succeed; persists partial results |
-| `awaiting_answers` | Intermediate exam status after successful extraction, before the teacher provides correct answers for each question |
-| `ExtractionResult` | TypeScript type returned by the `extract-questions` Edge Function, containing extracted questions and optional warnings |
-| `ExamWithJoins` | TypeScript type joining `exams` with `subjects`, `grade_levels`, and `questions` for display components |
+**OCR**: Optical Character Recognition via multimodal LLM (e.g., Claude 3.5 Sonnet with vision)
 
----
+**LLM Multimodal**: Language model capable of processing images and text; used to extract questions from PDF rendered as base64 images
 
-## Section 3: Feature Requirements & Global Constraints
+**extraction_warning**: Text field populated when OCR partially succeeds (e.g., one page illegible, others readable). Contains concatenated warnings per page.
 
-### Feature Requirements (PRD F5)
-
-| ID | Requirement |
-|----|------------|
-| REQ-001 | System SHALL extract objective and essay questions from PDFs up to 25 MB |
-| REQ-002 | On partial OCR failure, SHALL persist successfully extracted questions and populate `extraction_warning` |
-| REQ-003 | After extraction, SHALL display questions and prompt teacher to provide correct answers (F5.4) |
-| REQ-004 | System SHALL support visual elements (tables, images) unchanged in the adapted version (F5.3) |
-| CON-001 | Edge Function timeout ~150s; batch processing required for exams with >10 questions |
-| CON-002 | PDF sent as base64 to multimodal LLM; no page-by-page conversion in MVP |
-| SEC-001 | Storage bucket `exams` RLS — teacher accesses only their own `{userId}/{examId}.pdf` |
+**awaiting_answers**: Status after extraction; teacher must provide correct answers for each question before proceeding.
 
 ### Global Project Constraints
 
@@ -100,412 +89,553 @@ This document specifies the complete PDF extraction process for the PRISMA ("Ada
 - Coverage: minimum 80% on critical business functions (Edge Functions, adaptation, extraction)
 - CI gate: PRs blocked if a11y violations found; axe rules never disabled
 
----
+## Feature Requirements
 
-## Section 4: Interfaces & Data Contracts
+**REQ-001**: System SHALL extract objective and essay questions from PDFs up to 25 MB, including structured alternatives and question text.
 
-### 4.1 Database Schema
+**REQ-002**: On partial OCR failure, System SHALL persist successfully extracted questions and populate `extraction_warning` with concatenated page-level error details.
 
-#### Table: `exams` (existing)
+**REQ-003**: After extraction completes, System SHALL display all extracted questions and prompt teacher to provide correct answers for each (Feature F5.4 in PRD).
 
-> **Current schema** — from migration `20260318000001_initial_schema.sql`
+**REQ-004**: System SHALL support visual elements (tables, images, diagrams) unchanged in the adapted version (Feature F5.3 in PRD); multimodal LLM captures image context in question_text.
 
+**CON-001**: Edge Function timeout ~150 seconds; batch processing required for exams with >10 questions to avoid timeouts.
+
+**CON-002**: PDF sent as base64-encoded image to multimodal LLM; no page-by-page PDF-to-image conversion in MVP.
+
+**SEC-001**: Storage bucket `exams` RLS policy enforces row-level security: teacher accesses only PDFs under `{userId}/{examId}.pdf` path.
+
+# 4. Interfaces & Data Contracts
+
+## SQL Table Schemas
+
+### Table: exams
+
+**Current Schema** (existing):
 ```sql
-create table if not exists public.exams (
-  id uuid primary key default uuid_generate_v4(),
-  user_id uuid references public.profiles(id) on delete cascade not null,
-  subject_id uuid references public.subjects(id) on delete restrict not null,
-  grade_level_id uuid references public.grade_levels(id) on delete restrict not null,
-  title text not null,
-  file_path text,
-  status text default 'draft' check (status in ('draft', 'processing', 'completed', 'error')),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE TABLE exams (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE RESTRICT,
+  grade_level_id UUID NOT NULL REFERENCES grade_levels(id) ON DELETE RESTRICT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  status TEXT NOT NULL CHECK (status IN ('draft', 'processing', 'completed', 'error'))
 );
 ```
 
-> **Target schema** — requires a new migration (not yet written)
-
+**Target Schema** (after migration):
 ```sql
--- Migration: add extraction columns to exams and expand status enum
-alter table public.exams
-  drop constraint exams_status_check,
-  add constraint exams_status_check
-    check (status in ('draft', 'uploading', 'processing', 'awaiting_answers', 'ready', 'error')),
-  add column if not exists topic text,
-  add column if not exists extraction_warning text,
-  add column if not exists error_message text;
+ALTER TABLE exams ADD COLUMN topic TEXT;
+ALTER TABLE exams ADD COLUMN extraction_warning TEXT;
+ALTER TABLE exams ADD COLUMN error_message TEXT;
+ALTER TABLE exams DROP CONSTRAINT exams_status_check;
+ALTER TABLE exams ADD CONSTRAINT exams_status_check
+  CHECK (status IN ('draft', 'uploading', 'processing', 'awaiting_answers', 'ready', 'error'));
 ```
 
-Changes summary:
-- `status` CHECK expanded from 4 values (`draft`, `processing`, `completed`, `error`) to 6 values (`draft`, `uploading`, `processing`, `awaiting_answers`, `ready`, `error`). Note: `completed` renamed to `ready`.
-- `topic` (text, nullable) — optional topic/chapter descriptor provided by teacher
-- `extraction_warning` (text, nullable) — non-fatal OCR failure description for partial extractions
-- `error_message` (text, nullable) — fatal error detail when `status = 'error'`
+### Table: questions
 
-#### Table: `questions` (existing)
-
-> **Current schema** — from migration `20260318000001_initial_schema.sql`
-
+**Current Schema** (existing):
 ```sql
-create table if not exists public.questions (
-  id uuid primary key default uuid_generate_v4(),
-  exam_id uuid references public.exams(id) on delete cascade not null,
-  text text not null,
-  order_number integer not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE TABLE questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  exam_id UUID NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
+  question_text TEXT NOT NULL,
+  question_type TEXT NOT NULL CHECK (question_type IN ('objective', 'essay')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
 
-> **Target schema** — requires a new migration (not yet written)
-
+**Target Schema** (after migration):
 ```sql
--- Migration: add structured question columns
-alter table public.questions
-  add column if not exists alternatives jsonb,
-  add column if not exists correct_answer text;
+ALTER TABLE questions ADD COLUMN alternatives JSONB DEFAULT NULL;
+ALTER TABLE questions ADD COLUMN correct_answer TEXT DEFAULT NULL;
 ```
 
-Changes summary:
-- `alternatives` (JSONB, nullable) — array of answer options for multiple-choice questions (e.g. `["A) ...", "B) ...", "C) ...", "D) ..."]`); null for essay questions
-- `correct_answer` (text, nullable) — teacher-provided correct answer letter or text; populated after `awaiting_answers` phase
-
-### 4.2 TypeScript Types
-
-```typescript
-// lib/types/exam.ts
-
-export type ExamStatus =
-  | 'draft'
-  | 'uploading'
-  | 'processing'
-  | 'awaiting_answers'
-  | 'ready'
-  | 'error';
-
-export interface Exam {
-  id: string;
-  userId: string;
-  subjectId: string;
-  gradeLevelId: string;
-  title: string;
-  topic?: string | null;
-  filePath: string | null;
-  status: ExamStatus;
-  extractionWarning?: string | null;
-  errorMessage?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Question {
-  id: string;
-  examId: string;
-  text: string;
-  orderNumber: number;
-  alternatives: string[] | null;   // null for essay questions
-  correctAnswer: string | null;    // null until teacher provides answer
-  createdAt: string;
-}
-
-export interface ExtractionResult {
-  questions: Array<{
-    text: string;
-    orderNumber: number;
-    alternatives: string[] | null;
-  }>;
-  warning?: string;  // present when partial OCR failure occurred
-}
-
-export interface ExamWithJoins extends Exam {
-  subject: {
-    id: string;
-    name: string;
-  };
-  gradeLevel: {
-    id: string;
-    name: string;
-  };
-  questions: Question[];
-}
-```
-
-### 4.3 Zod Schemas
-
-```typescript
-// lib/schemas/exam.ts
-import { z } from 'zod';
-
-export const createExamSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(200),
-  subjectId: z.string().uuid('Invalid subject'),
-  gradeLevelId: z.string().uuid('Invalid grade level'),
-  topic: z.string().max(500).optional(),
-  // file validated separately via validatePdfFile()
-});
-
-export type CreateExamInput = z.infer<typeof createExamSchema>;
-
-export const extractedQuestionSchema = z.object({
-  text: z.string().min(1),
-  orderNumber: z.number().int().positive(),
-  alternatives: z.array(z.string()).nullable(),
-});
-
-export type ExtractedQuestion = z.infer<typeof extractedQuestionSchema>;
-```
-
-### 4.4 API Contracts
-
-#### `POST /api/exams`
-
-Accepts multipart `FormData`. Creates the exam record, uploads the PDF, and triggers the Edge Function.
-
-**Request**
-```
-Content-Type: multipart/form-data
-
-Fields:
-  title         string  (required)
-  subjectId     UUID    (required)
-  gradeLevelId  UUID    (required)
-  topic         string  (optional, max 500 chars)
-  file          File    (required, PDF, max 25 MB)
-```
-
-**Response — 201 Created**
-```json
-{ "id": "uuid-of-created-exam" }
-```
-
-**Response — 400 Bad Request**
-```json
-{ "error": "FILE_TOO_LARGE" | "INVALID_FILE_TYPE" | "VALIDATION_ERROR", "details": "..." }
-```
-
-**Response — 401 Unauthorized**
-```json
-{ "error": "UNAUTHENTICATED" }
-```
-
-**Response — 500 Internal Server Error**
-```json
-{ "error": "UPLOAD_FAILED" | "TRIGGER_FAILED", "details": "..." }
-```
-
-#### `GET /api/exams/[id]/status`
-
-Polls the exam status for the `ExtractionStatus` component.
-
-**Response — 200 OK**
+**alternatives JSON Structure** (for objective questions):
 ```json
 {
-  "status": "draft" | "uploading" | "processing" | "awaiting_answers" | "ready" | "error",
-  "errorMessage": "string or absent"
+  "a": "Option A text",
+  "b": "Option B text",
+  "c": "Option C text",
+  "d": "Option D text",
+  "e": "Option E text"
 }
 ```
 
-**Response — 403 Forbidden** — exam does not belong to authenticated user
-**Response — 404 Not Found** — exam does not exist
+## TypeScript Types
 
-### 4.5 Edge Function Contract: `extract-questions`
-
-**Invocation:** called from `POST /api/exams` route handler via `supabase.functions.invoke()`
-
-**Input**
 ```typescript
-interface ExtractQuestionsPayload {
-  examId: string;
-  filePath: string;  // Supabase Storage path: {userId}/{examId}.pdf
-  userId: string;
+// Exam status enumeration
+type ExamStatus = 'draft' | 'uploading' | 'processing' | 'awaiting_answers' | 'ready' | 'error';
+
+// Question type enumeration
+type QuestionType = 'objective' | 'essay';
+
+// Exam data model
+interface Exam {
+  id: string;
+  user_id: string;
+  subject_id: string;
+  grade_level_id: string;
+  topic?: string;
+  status: ExamStatus;
+  extraction_warning?: string;
+  error_message?: string;
+  created_at: string;
+  updated_at: string;
 }
-```
 
-**Output** (returned to caller; also written to DB internally)
-```typescript
-interface ExtractQuestionsResponse {
+// Question data model
+interface Question {
+  id: string;
+  exam_id: string;
+  question_text: string;
+  question_type: QuestionType;
+  alternatives?: Record<string, string> | null;
+  correct_answer?: string | null;
+  created_at: string;
+}
+
+// Edge Function extraction result
+interface ExtractionResult {
   success: boolean;
-  questionsCount: number;
-  warning?: string;  // partial OCR failure description
-  error?: string;    // present only when success = false
+  questions: ExtractedQuestion[];
+  warnings?: string[];
+  error?: string;
+}
+
+// Single extracted question
+interface ExtractedQuestion {
+  question_text: string;
+  question_type: QuestionType;
+  alternatives: Record<string, string> | null;
 }
 ```
 
-**Side effects on DB:**
-1. Sets `exams.status = 'processing'` on start
-2. Inserts rows into `questions` for each extracted question
-3. On success: sets `exams.status = 'awaiting_answers'`; populates `exams.extraction_warning` if partial failure
-4. On fatal failure: sets `exams.status = 'error'` and populates `exams.error_message`
+## Zod Schemas
 
----
+```typescript
+import { z } from 'zod';
 
-## Section 5: Acceptance Criteria
+// Schema for POST /api/exams request validation
+export const createExamSchema = z.object({
+  subjectId: z.string().uuid('Invalid subject ID'),
+  gradeLevelId: z.string().uuid('Invalid grade level ID'),
+  topic: z.string().max(500, 'Topic must be ≤500 characters').optional(),
+  supportIds: z.array(z.string().uuid()).default([]),
+  pdf: z.instanceof(File).refine(
+    (file) => file.type === 'application/pdf',
+    'File must be a PDF'
+  ).refine(
+    (file) => file.size <= 25 * 1024 * 1024,
+    'PDF must be ≤25 MB'
+  ),
+});
 
-| ID | Given | When | Then |
-|----|-------|------|------|
-| AC-001 | Valid PDF ≤ 25 MB, authenticated teacher, valid `subjectId` and `gradeLevelId` | `POST /api/exams` with FormData | Exam record created with `status = 'uploading'`, PDF stored at `{userId}/{examId}.pdf`, Edge Function triggered, response `201 { id }` |
-| AC-002 | PDF where one or more pages are illegible/low-quality | Extraction Edge Function runs | All successfully extracted questions persisted to `questions`, `exams.extraction_warning` populated with description of failed pages, `status = 'awaiting_answers'` |
-| AC-003 | Exam with `status = 'awaiting_answers'` | Teacher navigates to `/exams/[id]/extraction` | All extracted questions displayed with correct-answer input fields; teacher can submit answers |
-| AC-004 | PDF > 25 MB | `POST /api/exams` | Response `400 { error: "FILE_TOO_LARGE" }`, no exam record created, no file uploaded |
-| AC-005 | Edge Function processing exceeds timeout (~150s) | Processing time limit reached | `exams.status` set to `'error'`, `exams.error_message` populated with timeout description, teacher shown error state with retry option |
-| AC-006 | Unauthenticated request | `POST /api/exams` or `GET /api/exams/[id]/status` | Response `401 { error: "UNAUTHENTICATED" }`, no data accessed |
-| AC-007 | Authenticated teacher polls status for exam belonging to another user | `GET /api/exams/[id]/status` | Response `403 { error: "FORBIDDEN" }` |
+// Schema for extracted question validation
+export const extractedQuestionSchema = z.object({
+  question_text: z.string().min(1, 'Question text required'),
+  question_type: z.enum(['objective', 'essay']),
+  alternatives: z.record(z.string()).nullable().default(null),
+});
 
----
+// Schema for extraction result
+export const extractionResultSchema = z.object({
+  success: z.boolean(),
+  questions: z.array(extractedQuestionSchema),
+  warnings: z.array(z.string()).optional(),
+  error: z.string().optional(),
+});
+```
 
-## Section 6: Test Strategy
+## API Contracts
 
-### Layer 1 — Vitest + @testing-library/react
+### POST /api/exams
 
-**Zod schema tests (`lib/schemas/exam.test.ts`)**
-- `createExamSchema`: valid input passes; missing `subjectId` fails; missing `gradeLevelId` fails; `topic` exceeding 500 chars fails; empty `title` fails
-- `extractedQuestionSchema`: valid objective question with alternatives passes; valid essay question with `alternatives: null` passes; missing `text` fails; non-integer `orderNumber` fails
+**Input**: `FormData` with fields:
+- `subjectId` (string, UUID)
+- `gradeLevelId` (string, UUID)
+- `topic` (string, optional, max 500 chars)
+- `supportIds` (string[], optional, comma-separated UUIDs)
+- `pdf` (File, required, type: application/pdf, max 25 MB)
 
-**Utility function tests (`lib/utils/exam.test.ts`)**
-- `validatePdfFile`: non-PDF MIME type returns error; file > 25 MB returns error; `null` file returns error; valid PDF ≤ 25 MB returns null (no error)
-- `getExamStatusDisplay`: returns correct label and icon for all 6 `ExamStatus` values (`draft`, `uploading`, `processing`, `awaiting_answers`, `ready`, `error`)
-- `getExamRoute`: returns correct Next.js route for all 6 `ExamStatus` values
+**Output** (200 OK):
+```json
+{
+  "id": "exam-uuid",
+  "status": "uploading"
+}
+```
 
-**Hook tests (`hooks/use-exam-status.test.ts`)**
-- Polls `GET /api/exams/[id]/status` every 2s while `status` is `uploading` or `processing`
-- Stops polling when status reaches terminal state (`awaiting_answers`, `ready`, `error`)
-- Calls `onComplete` callback on `awaiting_answers` or `ready`
-- Calls `onError` callback on `error`
+**Error Responses**:
+- `400 Bad Request`: Missing fields, invalid UUID, file not PDF, file >25 MB
+  ```json
+  {
+    "error": "PDF must be ≤25 MB"
+  }
+  ```
+- `401 Unauthorized`: User not authenticated
+- `500 Internal Server Error`: Storage or database failure
 
-Mock: `vi.mock('@/lib/supabase/server')`, `vi.mock('@/lib/supabase/client')`
+### GET /api/exams/[id]/status
 
-### Layer 2 — jest-axe + Vitest
+**Input**: Route parameter `id` (exam UUID)
 
-**Component: `<ExtractionStatus>` (`components/extraction-status.test.tsx`)**
-- State `loading`: spinner visible; zero WCAG violations
-- State `partial-success` (with `extraction_warning`): warning banner visible; zero WCAG violations
-- State `error` (with `error_message`): error message visible, retry button present; zero WCAG violations
-- State `complete` (`status = 'awaiting_answers'`): question count displayed, CTA visible; zero WCAG violations
+**Output** (200 OK):
+```json
+{
+  "id": "exam-uuid",
+  "status": "processing",
+  "errorMessage": null
+}
+```
 
-All axe scans use tags: `wcag2a`, `wcag2aa`, `wcag22aa`
+**or** (if error):
+```json
+{
+  "id": "exam-uuid",
+  "status": "error",
+  "errorMessage": "Edge Function timeout after 150s"
+}
+```
 
-Mock: `vi.mock('supabase/functions/extract-questions')`
+**Error Responses**:
+- `404 Not Found`: Exam not found or user lacks access
+- `401 Unauthorized`: User not authenticated
 
-### Layer 3 — Playwright + @axe-core/playwright
+## Edge Function: extract-questions
 
-**Page: `/exams/[id]/extraction`**
-- Full page axe scan with tags `wcag2a`, `wcag2aa`, `wcag22aa`; zero violations required
-- Error state: `extraction_warning` message visible and accessible to screen readers
-- Loading state: spinner has `aria-label`; page title announces processing status
-- Complete state: question list renders; correct-answer inputs have associated labels
+**Input** (Supabase Edge Function POST body):
+```json
+{
+  "examId": "exam-uuid",
+  "userId": "user-uuid",
+  "pdfBase64": "data:application/pdf;base64,JVBERi0xLjQK...",
+  "topic": "Biology Chapter 3"
+}
+```
 
-**CI gate:** All Playwright a11y tests must pass before PR merge; `axe.disableRules()` forbidden.
+**Output** (200 OK):
+```json
+{
+  "success": true,
+  "questions": [
+    {
+      "question_text": "What is photosynthesis?",
+      "question_type": "essay",
+      "alternatives": null
+    },
+    {
+      "question_text": "Which organelle produces ATP?",
+      "question_type": "objective",
+      "alternatives": {
+        "a": "Mitochondrion",
+        "b": "Chloroplast",
+        "c": "Ribosome",
+        "d": "Nucleus",
+        "e": "Golgi apparatus"
+      }
+    }
+  ],
+  "warnings": ["Page 2: Low OCR confidence (68%)"]
+}
+```
 
-**Coverage target:** 80% minimum on `extract-questions` Edge Function utility functions (question parser, status updater, LLM response validator).
+**Failure** (if critical error):
+```json
+{
+  "success": false,
+  "questions": [],
+  "error": "PDF parsing failed: invalid file format"
+}
+```
 
----
+**Timeout/Limit Exceeded** (503 Service Unavailable):
+- Edge Function kills job after ~150 seconds
+- Status set to `error`, error_message: "Extraction timeout (>150s)"
 
-## Section 7: Design Rationale
+# 5. Acceptance Criteria
 
-### Multimodal LLM vs. Tesseract OCR
+**AC-001**: Given a valid PDF ≤25 MB with multiple choice and essay questions, When POST `/api/exams` with subject_id, grade_level_id, and pdf FormData fields, Then exam is created with status `uploading`, PDF is stored in `exams/{userId}/{examId}.pdf`, and extraction is triggered.
 
-A multimodal LLM (e.g., GPT-4o) was chosen over Tesseract for the following reasons:
-- **Quality**: Multimodal LLMs handle low-quality scans, handwriting, and mixed-language documents better than Tesseract
-- **Tables and images**: Multimodal LLMs can describe and preserve visual elements (tables, diagrams) natively; Tesseract discards non-text content
-- **Structure extraction**: A single LLM call can simultaneously perform OCR and parse the question structure (number, stem, alternatives) without a separate NLP pipeline
-- **Trade-off**: Higher cost per extraction and dependency on external API; mitigated by the low frequency of exam uploads (teachers upload infrequently)
+**AC-002**: Given a PDF with one illegible page (OCR fails) and two readable pages, When extraction Edge Function processes it, Then questions from readable pages are persisted to `questions` table, `extraction_warning` is populated with "Page 2: OCR failed (confidence <30%)", and status transitions to `awaiting_answers`.
 
-### Edge Function vs. Inngest / BullMQ
+**AC-003**: Given an exam in status `awaiting_answers`, When a teacher views the extraction page (`/exams/[id]/extraction`), Then all extracted questions are displayed in a form with input fields for `correct_answer` per question, and teacher can submit answers.
 
-Supabase Edge Functions were chosen over a dedicated job queue (Inngest, BullMQ) because:
-- **No extra infrastructure**: Edge Functions run on Supabase's existing Deno runtime; no additional service to deploy or pay for in MVP
-- **Acceptable timeout**: The ~150s timeout is sufficient for exams up to ~10 questions in MVP; batch processing handles larger exams
-- **Simpler mental model**: Direct invocation from the API route is easier to trace than an async job queue for the initial release
-- **Future migration path**: If timeout becomes a bottleneck post-MVP, the Edge Function can be replaced with an Inngest workflow without changing the API surface or database schema
+**AC-004**: Given a PDF file >25 MB, When POST `/api/exams` is called, Then response is `400 Bad Request` with error message "PDF must be ≤25 MB", and no exam record is created.
 
-### Polling vs. Supabase Realtime
+**AC-005**: Given an exam with >10 questions and complex layout, When extraction Edge Function exceeds 150-second timeout, Then exam status is set to `error`, error_message is set to "Extraction timeout (>150s)", and teacher receives notification.
 
-Client-side polling via `GET /api/exams/[id]/status` was chosen over Supabase Realtime subscriptions because:
-- **Simplicity**: Polling requires no WebSocket connection management or Realtime channel cleanup
-- **Reliability**: Polling degrades gracefully on poor network connections; Realtime requires reconnection logic
-- **MVP scope**: Extraction typically completes within 30–60s; polling every 2s provides acceptable UX without Realtime overhead
-- **Future upgrade**: Realtime can replace polling without changing the `ExamStatus` data model
+# 6. Test Strategy
 
----
+## Layer 1: Vitest Unit Tests
 
-## Section 8: Dependencies
+### Schema & Utility Tests
 
-| ID | Type | Description |
-|----|------|-------------|
-| EXT-001 | External Service | Supabase Edge Functions (Deno runtime) — hosts and executes `extract-questions` |
-| SVC-001 | External API | OpenAI-compatible multimodal LLM (e.g., GPT-4o via OpenAI API or Azure OpenAI) — performs OCR + question extraction |
-| INF-001 | Infrastructure | Supabase Storage bucket `exams` — stores uploaded PDFs; RLS enforces per-user access |
-| PLT-001 | Platform | Next.js 16 App Router, Node.js runtime — hosts `POST /api/exams` and `GET /api/exams/[id]/status` route handlers |
-| DB-001 | Database | Supabase PostgreSQL — `exams` and `questions` tables with RLS policies |
-| LIB-001 | Library | `@supabase/ssr` — server-side Supabase client for auth and DB access in Next.js route handlers |
-| LIB-002 | Library | Zod — runtime validation of FormData inputs and Edge Function responses |
+1. **createExamSchema validation**
+   - Valid input: all required fields, pdf with correct MIME type ✓
+   - Missing subjectId: validation error raised
+   - supportIds empty array: defaults to [] ✓
+   - topic >500 characters: validation error raised
+   - pdf >25 MB: validation error raised
+   - pdf non-PDF MIME type: validation error raised
 
----
+2. **validatePdfFile utility**
+   - File with MIME type `application/pdf`: returns true
+   - File with MIME type `application/msword`: returns false
+   - File 25 MB exactly: returns true
+   - File 25.1 MB: returns false
+   - null file: throws error
 
-## Section 9: Examples
+3. **extractedQuestionSchema validation**
+   - Valid objective question: all fields present, alternatives populated
+   - Valid essay question: question_text present, alternatives null
+   - Missing question_text: validation error
+   - Invalid question_type: validation error
 
-### Example 1: Scanned PDF with Partial OCR Failure
+### Component & Hook Tests
 
-**Scenario:** Teacher uploads a 10-page scanned exam PDF. Pages 1–8 are high-quality; pages 9–10 are blurry.
+4. **useExamStatus hook**
+   - Polls `/api/exams/[id]/status` at 2-second intervals
+   - Stops polling when status is `ready` or `error`
+   - Exposes { status, isLoading, error }
 
-**Flow:**
-1. `POST /api/exams` → exam created (`status = 'uploading'`), PDF stored
-2. Edge Function starts → `status = 'processing'`
-3. LLM extracts 8 questions from pages 1–8; returns warning for pages 9–10
-4. 8 questions inserted into `questions`; `exams.extraction_warning = "Pages 9–10 could not be parsed due to low image quality"`; `status = 'awaiting_answers'`
-5. Teacher sees 8 questions with warning banner: "2 pages could not be extracted. Please review."
+5. **getExamStatusDisplay utility**
+   - Returns "Uploading..." for status `uploading`
+   - Returns "Processing..." for status `processing`
+   - Returns "Awaiting answers..." for status `awaiting_answers`
+   - Returns "Ready" for status `ready`
+   - Returns "Error" for status `error`
+   - Returns "Draft" for status `draft`
 
-### Example 2: PDF with Table
+6. **getExamRoute utility**
+   - Returns `/exams/[id]` for status `draft`
+   - Returns `/exams/[id]/extraction` for status `uploading`, `processing`, `awaiting_answers`
+   - Returns `/exams/[id]/adapt` for status `ready`
+   - Returns `/exams/[id]/error` for status `error`
 
-**Scenario:** Teacher uploads a science exam containing a data table followed by 3 questions about it.
+## Layer 2: jest-axe + Vitest Component Accessibility
 
-**Flow:**
-1. LLM receives base64 PDF and is instructed to preserve table content verbatim in the question `text`
-2. Extracted `text` for Q1: `"Based on the table below:\n| Species | Population |\n|---------|------------|\n| ...\nWhat is the trend shown?"`
-3. Table is stored as Markdown inside `questions.text`; no separate visual asset stored in MVP
-4. Adaptation spec (`spec-process-adaptation.md`) defines how the table is preserved in adapted versions (REQ-004)
+### <ExtractionStatus> Component Tests
 
-### Example 3: PDF Rejected for Exceeding Size Limit
+7. **Loading state**
+   - Spinner displayed with aria-label "Extracting questions..."
+   - Zero WCAG violations (tags: wcag2a, wcag2aa, wcag22aa)
 
-**Scenario:** Teacher attempts to upload a 30 MB PDF scan.
+8. **Partial success state**
+   - Questions list displayed
+   - extraction_warning message visible and readable
+   - Alert role="alert" with warning message
+   - Zero WCAG violations
 
-**Flow:**
-1. Client-side validation in the form detects file > 25 MB before submission
-2. If bypassed, `POST /api/exams` route handler runs `validatePdfFile()` → returns `FILE_TOO_LARGE`
-3. Response: `400 { "error": "FILE_TOO_LARGE", "details": "File size 30.1 MB exceeds the 25 MB limit" }`
-4. No exam record created; no file uploaded to Storage
+9. **Error state**
+   - error_message displayed prominently
+   - Alert role="alert" with error type
+   - Retry button with cursor-pointer and min 44×44 px
+   - Zero WCAG violations
 
----
+10. **Complete state**
+    - All questions displayed with correct_answer input fields
+    - Labels associated with inputs via htmlFor
+    - Submit button enabled
+    - Zero WCAG violations
 
-## Section 10: Validation Checklist
+## Layer 3: Playwright E2E Tests
 
-The following checklist must be verified before this spec is considered implementation-ready:
+11. **Full page accessibility scan**
+    - Navigate to `/exams/[id]/extraction` for exam in `processing` status
+    - Run axe scan with tags: wcag2a, wcag2aa, wcag22aa
+    - Zero violations expected
+    - Test both light and dark modes
 
-- [x] Frontmatter complete: `title`, `version`, `date_created`, `last_updated`, `owner`, `tags`
-- [x] All 11 sections present (Introduction through Related Specifications)
-- [x] Global Constraints block present verbatim in Section 3
-- [x] All feature REQs (REQ-001 through SEC-001) traceable to PRD F5
-- [x] Section 4 includes:
-  - [x] Current SQL schema for `exams` (from existing migration)
-  - [x] Target SQL schema changes for `exams` (clearly marked as requiring new migration)
-  - [x] Current SQL schema for `questions` (from existing migration)
-  - [x] Target SQL schema changes for `questions` (clearly marked as requiring new migration)
-  - [x] TypeScript types: `ExamStatus`, `Exam`, `Question`, `ExtractionResult`, `ExamWithJoins`
-  - [x] Zod schemas: `createExamSchema`, `extractedQuestionSchema`
-  - [x] API contract: `POST /api/exams` (FormData → `{ id: string }`)
-  - [x] API contract: `GET /api/exams/[id]/status` (→ `{ status, errorMessage? }`)
-  - [x] Edge Function `extract-questions` input/output contract
-- [x] Section 5 has ≥ 5 ACs in Given-When-Then format (7 ACs present)
-- [x] Section 6 has all 3 test layers with specific named test cases
+12. **Error state workflow**
+    - Mock extraction to return error_message
+    - Load extraction page
+    - Verify error message displayed
+    - Verify axe scan returns zero violations
+
+13. **Form submission with correct answers**
+    - Fill in correct_answer for all extracted questions
+    - Submit form
+    - Verify exam transitions to `ready` status via polling
+    - Verify axe scan zero violations on result page
+
+### Coverage Requirements
+
+- Edge Function `extract-questions` utilities: ≥80% coverage
+- Server-side validation and upload logic: ≥80% coverage
+
+### Mocking Strategy
+
+```typescript
+// Mock Supabase server client
+vi.mock('@/lib/supabase/server', () => ({
+  createServerClient: vi.fn(() => ({
+    from: vi.fn((table) => ({
+      insert: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({}),
+    })),
+    storage: {
+      from: vi.fn(() => ({
+        upload: vi.fn().mockResolvedValue({}),
+      })),
+    },
+  })),
+}));
+
+// Mock Edge Function
+vi.mock('supabase/functions/extract-questions', () => ({
+  extractQuestions: vi.fn(async (input) => ({
+    success: true,
+    questions: [
+      {
+        question_text: "Sample question",
+        question_type: "objective",
+        alternatives: { a: "Option A", b: "Option B" },
+      },
+    ],
+  })),
+}));
+```
+
+# 7. Rationale
+
+## Multimodal LLM vs. Tesseract
+
+We selected OpenAI-compatible multimodal LLM (e.g., Claude 3.5 Sonnet with vision) over traditional OCR (Tesseract) for these reasons:
+
+1. **Table and image context**: Tables, diagrams, and embedded images are preserved semantically in the extracted question text; Tesseract would require post-processing.
+2. **Question type inference**: LLM naturally infers whether a question is objective or essay based on formatting.
+3. **Alternative extraction**: Objective question alternatives are reliably structured by the LLM; Tesseract requires complex heuristics.
+4. **No local infrastructure**: Avoids deploying and maintaining Tesseract binaries; uses serverless Edge Function.
+
+## Edge Function vs. Inngest
+
+Edge Function (Supabase Deno runtime) is simpler than Inngest for MVP:
+
+1. **No external dependency**: Supabase Edge Functions run on the same infrastructure as the database.
+2. **Direct database writes**: Extracted questions are written immediately to Postgres without a queue.
+3. **Timeout acceptable**: 150-second timeout is sufficient for PDFs ≤25 MB in MVP; future versions can batch-process larger exams.
+4. **Lower operational overhead**: One fewer managed service.
+
+## Polling vs. Realtime Subscriptions
+
+We use polling-based status updates over Supabase Realtime:
+
+1. **Simpler client code**: `useExamStatus` hook with setInterval; no Realtime listener setup.
+2. **Reduced database load**: Polling at 2-second intervals for a few dozen concurrent exams is acceptable in MVP.
+3. **Better error recovery**: Network reconnection handled naturally by next fetch.
+4. **Future migration path**: Can add Realtime later without changing API contracts.
+
+# 8. Dependencies
+
+**EXT-001**: Supabase Edge Functions (Deno runtime)
+- Required for serverless execution of extract-questions
+- Version: Deno 1.40+
+
+**SVC-001**: Multimodal LLM service (OpenAI-compatible API)
+- Required for vision-based question extraction
+- Examples: Claude 3.5 Sonnet, GPT-4o, Llama 2 with Vision
+- Must support base64-encoded image input
+
+**INF-001**: Supabase Storage bucket `exams`
+- Required for teacher PDF persistence
+- RLS policy: owner restriction to `{userId}/{examId}.pdf`
+
+**PLT-001**: Next.js 16 App Router with Node.js runtime
+- Route handlers `/api/exams` and `/api/exams/[id]/status`
+- FormData parsing in POST handler
+
+**DB-001**: PostgreSQL extensions
+- `pgcrypto` for UUID generation (already present)
+- No additional extensions required
+
+# 9. Examples
+
+## Example 1: Scanned PDF with Partial OCR Failure
+
+**Input PDF**: 5-page scanned document, pages 1, 3–5 readable, page 2 illegible (faded).
+
+**Edge Function Processing**:
+1. Convert PDF to base64 image per page
+2. Send each page to multimodal LLM
+3. Page 1: 3 objective questions extracted ✓
+4. Page 2: LLM returns "Unable to extract; confidence <10%" → warning recorded
+5. Pages 3–5: 4 objective + 2 essay questions extracted ✓
+
+**Result**:
+```json
+{
+  "success": true,
+  "questions": [
+    { "question_text": "Q1", "question_type": "objective", "alternatives": {...} },
+    { "question_text": "Q3", "question_type": "objective", "alternatives": {...} },
+    ...
+  ],
+  "warnings": ["Page 2: OCR confidence <10%; skipped"]
+}
+```
+
+**Database State**:
+- `exams.status` = `awaiting_answers`
+- `exams.extraction_warning` = "Page 2: OCR confidence <10%; skipped"
+- `questions` table = 9 rows (pages 1, 3–5)
+
+## Example 2: PDF with Complex Table
+
+**Input PDF**: Biology exam with periodic table image spanning page 2.
+
+**Edge Function Processing**:
+- LLM analyzes periodic table and identifies embedded question: "The element with atomic number 6 is..."
+- question_type inferred as `objective`
+- alternatives extracted from context
+
+**Result**: Question preserved with full table context in question_text.
+
+## Example 3: PDF >25 MB Rejected
+
+**Input**: User selects 30 MB PDF.
+
+**POST /api/exams**:
+1. Client validates file size before upload
+2. Server-side validation in createExamSchema rejects >25 MB
+3. Response: `400 Bad Request`
+   ```json
+   {
+     "error": "PDF must be ≤25 MB (file size: 30 MB)"
+   }
+   ```
+4. No exam created, no database writes.
+
+# 10. Validation Checklist
+
+- [x] Frontmatter complete
+- [x] All 11 sections present
+- [x] Global Constraints block present in Section 3
+- [x] Section 4 includes SQL schemas, TypeScript types, Zod schemas, API contracts
+- [x] Section 5 has ≥5 AC in Given-When-Then format
+- [x] Section 6 has all 3 test layers with specific test cases named
 - [x] Section 11 references at least 3 related specs
 
+# 11. Related Specifications
+
+1. **spec-process-adaptation.md** — Defines question tagging with BNCC competencies and Bloom's taxonomy; receives extracted questions from this spec as input.
+
+2. **spec-process-result.md** — Specifies question editing and enrichment UI after extraction; depends on questions table schema defined here.
+
+3. **spec-process-new-exam.md** — Defines the new exam form and subject/grade selection workflow prior to PDF upload; provides subject_id and grade_level_id inputs to POST /api/exams route.
+
+4. **spec-design-auth.md** — Specifies authentication and authorization logic; extraction process enforces user_id-based RLS in Storage and database.
+
+5. **spec-system-edge-functions.md** (future) — Centralized documentation of all Supabase Edge Functions; extract-questions is one implementation.
+
 ---
 
-## Section 11: Related Specifications
-
-| Spec | Relationship |
-|------|-------------|
-| `spec-process-adaptation.md` | Downstream — consumes `ExamWithJoins`, `Question`, and `ExamStatus` types defined here; triggered after `status = 'awaiting_answers'` |
-| `spec-process-new-exam.md` | Upstream UI — defines the teacher-facing form that produces the `POST /api/exams` request specified here |
-| `spec-process-result.md` | Downstream — defines the side-by-side result display after adaptation; depends on `Question` and `Exam` types |
-| `spec-design-auth.md` | Cross-cutting — defines the Supabase Auth + middleware contract that gates all routes in this spec; `SEC-001` depends on it |
+**Document Status**: Ready for implementation
+**Last Reviewed**: 2026-03-18
+**Next Review**: After implementation completion
