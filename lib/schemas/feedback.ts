@@ -31,7 +31,7 @@ export const saveFeedbackSchema = z
     comment: z
       .string()
       .min(1, 'Comment must not be empty')
-      .max(1000, 'Comment must be ≤ 1000 characters')
+      .max(5000, 'Comment must not exceed 5000 characters')
       .nullable()
       .optional(),
   })

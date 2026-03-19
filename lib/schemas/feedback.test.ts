@@ -130,20 +130,20 @@ describe('Feedback Schemas', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should reject comment longer than 1000 characters', () => {
+    it('should reject comment longer than 5000 characters', () => {
       const invalidData = {
         adaptation_id: '550e8400-e29b-41d4-a716-446655440000',
-        comment: 'a'.repeat(1001),
+        comment: 'a'.repeat(5001),
       };
 
       const result = saveFeedbackSchema.safeParse(invalidData);
       expect(result.success).toBe(false);
     });
 
-    it('should accept comment exactly 1000 characters', () => {
+    it('should accept comment exactly 5000 characters', () => {
       const validData = {
         adaptation_id: '550e8400-e29b-41d4-a716-446655440000',
-        comment: 'a'.repeat(1000),
+        comment: 'a'.repeat(5000),
       };
 
       const result = saveFeedbackSchema.safeParse(validData);
