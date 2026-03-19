@@ -50,7 +50,16 @@ export async function POST(
     }
 
     // Parse and validate request body (Zod)
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return Response.json(
+        { error: 'VALIDATION_ERROR', details: 'Request body must be valid JSON' },
+        { status: 400 }
+      );
+    }
+
     let validated;
     try {
       validated = submitAnswersSchema.parse(body);
@@ -143,11 +152,12 @@ export async function POST(
       await supabase.from('adaptations').insert(adaptationRecords);
     }
 
-    // Side effect 3: Set exam status to 'processing'
+    // Side effect 3: Set exam status to 'processing' (atomic check prevents race condition)
     await supabase
       .from('exams')
       .update({ status: 'processing' })
-      .eq('id', examId);
+      .eq('id', examId)
+      .eq('status', 'awaiting_answers');
 
     // Side effect 4: Invoke Edge Function (fire-and-forget)
     supabase.functions.invoke('analyze-and-adapt', {
