@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Diego/.agents/skills/**)",
+      "Read(//c/Users/Diego/.claude/skills/**)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(grep -r \"CLAUDE.md\\\\|claude.md\\\\|project.*setup\\\\|configuration\\\\|install\" ~/.agents/skills/*/SKILL.md)",
+      "Bash(grep -r \"CLAUDE.md\" ~/.agents/skills/*/SKILL.md 2)",
+      "Bash(/dev/null -A 3 -B 1)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/Diego/Repositorios/prismav2/**)",
+      "Bash(done)",
+      "Bash(ls:*)",
+      "Bash(wc:*)"
+    ]
+  }
+}
