@@ -1,6 +1,6 @@
 /**
  * Dashboard Page
- * Server Component for authenticated user dashboard
+ * Server Component for authenticated user dashboard with client-side exam management
  *
  * Route: /dashboard (authenticated)
  * Displays: List of user's exams with status badges and action links
@@ -18,13 +18,14 @@
  * - Empty state for users with no exams
  * - Create new exam button → /exams/new
  * - Responsive card layout (grid-cols-1 sm:grid-cols-2 lg:grid-cols-3)
+ * - Edit button (PencilIcon) → navigate to exam edit page
+ * - Delete button (Trash2Icon) with confirmation dialog
  */
 
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Plus, ClipboardList, MoreVertical } from 'lucide-react';
+import { Plus, ClipboardList } from 'lucide-react';
 import type { ExamStatus } from '@/lib/types/extraction';
 
 interface Subject {
@@ -204,6 +205,8 @@ function getActionHref(exam: Exam): string {
   }
 }
 
+import { ExamCard } from './exam-card';
+
 export default async function DashboardPage() {
   const exams = await fetchUserExams();
 
@@ -320,87 +323,19 @@ export default async function DashboardPage() {
             </div>
           ) : (
             /* Exams Grid — Editorial card layout */
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {exams.map((exam) => {
                 const statusConfig = getStatusConfig(exam.status);
                 const actionHref = getActionHref(exam);
 
                 return (
-                  <div
+                  <ExamCard
                     key={exam.id}
-                    className="relative bg-surface-container-low rounded-lg overflow-hidden hover:bg-opacity-90 transition-colors"
-                  >
-                    {/* Left border indicator — thick, colored */}
-                    <div
-                      className={`absolute left-0 top-0 bottom-0 w-1.5 ${statusConfig.barColor}`}
-                    />
-
-                    {/* Card Content */}
-                    <div className="p-6 pl-6">
-                      <div className="flex flex-col h-full gap-4">
-                        {/* Header: Status badge + Actions menu */}
-                        <div className="flex items-start justify-between gap-4">
-                          <Badge
-                            variant={statusConfig.badgeVariant}
-                            className="flex-shrink-0"
-                          >
-                            {statusConfig.badgeLabel}
-                          </Badge>
-                          {/* Actions Menu — only if not processing */}
-                          {!statusConfig.actionDisabled && (
-                            <button className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
-                              <MoreVertical className="w-5 h-5" />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Title section — headline emphasis */}
-                        <div className="flex-1">
-                          <h3 className="font-display text-xl font-bold text-foreground line-clamp-2 leading-tight">
-                            {exam.title}
-                          </h3>
-                        </div>
-
-                        {/* Metadata: Subject, Grade Level */}
-                        <div className="text-sm text-muted-foreground font-sans space-y-1">
-                          {exam.subject && (
-                            <p className="flex items-center gap-2">
-                              <span className="font-mono text-xs uppercase text-muted-foreground">📚</span>
-                              {exam.subject.name}
-                              {exam.grade_level && <span className="text-muted-foreground">·</span>}
-                              {exam.grade_level && <span>{exam.grade_level.name}</span>}
-                            </p>
-                          )}
-                          {!exam.subject && exam.grade_level && (
-                            <p className="flex items-center gap-2">
-                              <span className="font-mono text-xs uppercase text-muted-foreground">📚</span>
-                              {exam.grade_level.name}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Time indicator */}
-                        <p className="text-xs text-muted-foreground font-mono">
-                          {formatRelativeDate(exam.updated_at)}
-                        </p>
-
-                        {/* Action button */}
-                        <Link
-                          href={actionHref}
-                          className="block mt-2"
-                        >
-                          <Button
-                            variant="default"
-                            size="sm"
-                            disabled={statusConfig.actionDisabled}
-                            className="w-full"
-                          >
-                            {statusConfig.actionLabel}
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
+                    exam={exam}
+                    statusConfig={statusConfig}
+                    actionHref={actionHref}
+                    formatRelativeDate={formatRelativeDate}
+                  />
                 );
               })}
             </div>
