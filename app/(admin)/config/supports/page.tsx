@@ -6,10 +6,15 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
-import { Pencil, Trash2 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { SupportsManagementClient } from '@/components/admin/supports-management';
 
 interface Support {
@@ -67,56 +72,40 @@ export default async function SupportsPage() {
         </div>
 
         {/* Supports Table */}
-        {supports.length === 0 ? (
-          <Card className="p-8">
-            <div className="flex flex-col items-center justify-center gap-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                Nenhum suporte cadastrado
-              </p>
-            </div>
-          </Card>
-        ) : (
-          <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                      Nome
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                      Descrição
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {supports.map((support) => (
-                    <tr key={support.id} className="hover:bg-muted/20">
-                      <td className="px-6 py-4 text-sm font-medium text-foreground">
-                        {support.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {support.description || '—'}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+        {supports.length > 0 && (
+          <div className="rounded-lg overflow-hidden bg-surface-container-low border border-outline/10">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-b border-outline/10">
+                  <TableHead className="px-6 py-4 text-sm font-semibold text-foreground">
+                    Nome
+                  </TableHead>
+                  <TableHead className="px-6 py-4 text-sm font-semibold text-foreground">
+                    Descrição
+                  </TableHead>
+                  <TableHead className="px-6 py-4 text-sm font-semibold text-foreground">
+                    Ações
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {supports.map((support) => (
+                  <TableRow
+                    key={support.id}
+                    className="border-b border-outline/10 hover:bg-surface-container-highest/50"
+                  >
+                    <TableCell className="px-6 py-4 text-sm font-medium text-foreground">
+                      {support.name}
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-sm text-muted-foreground">
+                      {support.description || '—'}
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-sm" />
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
     </main>

@@ -6,10 +6,15 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
-import { Pencil, Trash2 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { GradesManagementClient } from '@/components/admin/grades-management';
 
 interface GradeLevel {
@@ -66,56 +71,40 @@ export default async function GradesPage() {
         </div>
 
         {/* Grades Table */}
-        {grades.length === 0 ? (
-          <Card className="p-8">
-            <div className="flex flex-col items-center justify-center gap-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                Nenhuma série cadastrada
-              </p>
-            </div>
-          </Card>
-        ) : (
-          <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                      Nível
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                      Nome
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {grades.map((grade) => (
-                    <tr key={grade.id} className="hover:bg-muted/20">
-                      <td className="px-6 py-4 text-sm font-medium text-foreground">
-                        {grade.level}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {grade.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+        {grades.length > 0 && (
+          <div className="rounded-lg overflow-hidden bg-surface-container-low border border-outline/10">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-b border-outline/10">
+                  <TableHead className="px-6 py-4 text-sm font-semibold text-foreground">
+                    Nível
+                  </TableHead>
+                  <TableHead className="px-6 py-4 text-sm font-semibold text-foreground">
+                    Nome
+                  </TableHead>
+                  <TableHead className="px-6 py-4 text-sm font-semibold text-foreground">
+                    Ações
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {grades.map((grade) => (
+                  <TableRow
+                    key={grade.id}
+                    className="border-b border-outline/10 hover:bg-surface-container-highest/50"
+                  >
+                    <TableCell className="px-6 py-4 text-sm font-medium text-foreground">
+                      {grade.level}
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-sm text-muted-foreground">
+                      {grade.name}
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-sm" />
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
     </main>
