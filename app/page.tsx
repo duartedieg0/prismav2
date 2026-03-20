@@ -80,7 +80,7 @@ export default async function LandingPage() {
             </div>
 
             {/* Feature Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {features.map((feature, idx) => (
                 <div key={idx} className="bg-card rounded-lg p-8 space-y-4">
                   <div className="flex items-start gap-4">
@@ -157,10 +157,5 @@ const features = [
     icon: <Users className="w-6 h-6" aria-hidden="true" />,
     title: 'Suportes Personalizados',
     description: 'Configure diferentes tipos de suporte (visual, auditivo, cognitivo) para cada perfil de aluno.',
-  },
-  {
-    icon: <CheckCircle className="w-6 h-6" aria-hidden="true" />,
-    title: 'Controle Total',
-    description: 'Revise, ajuste e aprove cada adaptação antes de disponibilizar para seus alunos.',
   },
 ]
