@@ -26,6 +26,7 @@ const config = {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          container: "hsl(var(--primary-container))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -55,31 +56,43 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        "surface-container-low": "hsl(var(--surface-container-low))",
+        "surface-container": "hsl(var(--surface-container))",
+        tertiary: {
+          DEFAULT: "hsl(var(--tertiary))",
+          foreground: "hsl(var(--tertiary-foreground))",
+          fixed: "hsl(var(--tertiary-fixed))",
+        },
       },
       borderRadius: {
         sm: "6px",
         md: "12px",
         lg: "16px",
         xl: "24px",
+        "2xl": "32px",
       },
       fontSize: {
-        "display-xl": ["48px", { lineHeight: "64px", letterSpacing: "-0.02em" }],
-        "display-lg": ["42px", { lineHeight: "56px", letterSpacing: "-0.02em" }],
-        "display-md": ["36px", { lineHeight: "48px", letterSpacing: "-0.015em" }],
-        heading: ["28px", { lineHeight: "40px", letterSpacing: "-0.01em" }],
+        "display-xl": ["48px", { lineHeight: "52px", letterSpacing: "-0.02em" }],
+        "display-lg": ["42px", { lineHeight: "48px", letterSpacing: "-0.02em" }],
+        "display-md": ["36px", { lineHeight: "44px", letterSpacing: "-0.015em" }],
+        heading: ["28px", { lineHeight: "36px", letterSpacing: "-0.01em" }],
         body: ["16px", { lineHeight: "24px", letterSpacing: "0em" }],
         small: ["14px", { lineHeight: "20px", letterSpacing: "0em" }],
         caption: ["12px", { lineHeight: "16px", letterSpacing: "0.02em" }],
       },
       fontFamily: {
-        sans: ["var(--font-plus-jakarta)", "system-ui", "sans-serif"],
+        // Inter para corpo de texto (padrão do sistema)
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        // Plus Jakarta Sans para headlines / display
         display: ["var(--font-plus-jakarta)", "system-ui", "sans-serif"],
+        // JetBrains Mono para metadata e IDs
         mono: ["var(--font-jetbrains-mono)", "monospace"],
       },
       boxShadow: {
-        sm: "0px 2px 4px rgba(0, 0, 0, 0.08)",
-        md: "0px 4px 12px rgba(0, 0, 0, 0.12)",
-        lg: "0px 12px 24px rgba(0, 0, 0, 0.16)",
+        sm: "0px 2px 4px rgba(0, 0, 0, 0.06)",
+        md: "0px 4px 12px rgba(0, 0, 0, 0.08)",
+        lg: "0px 12px 40px rgba(28, 25, 23, 0.06)",
+        glass: "0 12px 40px rgba(28, 25, 23, 0.06)",
       },
     },
   },
