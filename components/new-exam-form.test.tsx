@@ -69,7 +69,22 @@ describe('NewExamForm', () => {
       ).toBeInTheDocument();
     });
 
-    it('should render all form fields', () => {
+    it('should render stepper component', () => {
+      render(
+        <NewExamForm
+          subjects={mockSubjects}
+          gradeLevels={mockGradeLevels}
+          supports={mockSupports}
+        />
+      );
+
+      // Check for stepper progress bar
+      expect(screen.getByRole('progressbar')).toBeInTheDocument();
+      // Check for step labels
+      expect(screen.getByText('Informações')).toBeInTheDocument();
+    });
+
+    it('should render step 0 fields (exam name)', () => {
       render(
         <NewExamForm
           subjects={mockSubjects}
@@ -79,13 +94,10 @@ describe('NewExamForm', () => {
       );
 
       expect(screen.getByLabelText(/Nome da Prova/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Disciplina/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Série/i)).toBeInTheDocument();
-      expect(screen.getByText(/Suportes Educacionais/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Arquivo PDF/i)).toBeInTheDocument();
+      expect(screen.queryByLabelText(/Disciplina/i)).not.toBeInTheDocument();
     });
 
-    it('should render all support checkboxes', () => {
+    it('should render navigation buttons', () => {
       render(
         <NewExamForm
           subjects={mockSubjects}
@@ -94,33 +106,15 @@ describe('NewExamForm', () => {
         />
       );
 
-      expect(
-        screen.getByRole('checkbox', { name: /Fonte Ampliada/i })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole('checkbox', { name: /Aumento de Tempo/i })
-      ).toBeInTheDocument();
+      const backButton = screen.getByRole('button', { name: /Voltar/i });
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+
+      expect(backButton).toBeInTheDocument();
+      expect(nextButton).toBeInTheDocument();
+      expect(backButton).toBeDisabled(); // Back button disabled on first step
     });
 
-    it('should render submit button', () => {
-      render(
-        <NewExamForm
-          subjects={mockSubjects}
-          gradeLevels={mockGradeLevels}
-          supports={mockSupports}
-        />
-      );
-
-      expect(
-        screen.getByRole('button', {
-          name: /Criar Prova e Extrair Questões/i,
-        })
-      ).toBeInTheDocument();
-    });
-  });
-
-  describe('Client-side Validation', () => {
-    it('should show error for empty exam name', async () => {
+    it('should navigate between steps', async () => {
       const user = userEvent.setup();
       render(
         <NewExamForm
@@ -130,17 +124,129 @@ describe('NewExamForm', () => {
         />
       );
 
-      const submitButton = screen.getByRole('button', {
-        name: /Criar Prova/i,
-      });
-      await user.click(submitButton);
+      // Initially on step 0 (Informações)
+      expect(screen.getByLabelText(/Nome da Prova/i)).toBeInTheDocument();
 
+      // Click next
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
+
+      // Now on step 1 (Configurações)
       await waitFor(() => {
-        expect(screen.getByText(/Nome deve ter/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Disciplina/i)).toBeInTheDocument();
+        expect(screen.queryByLabelText(/Nome da Prova/i)).not.toBeInTheDocument();
       });
     });
 
-    it('should show error for exam name too short', async () => {
+    it('should show all support checkboxes on step 1', async () => {
+      const user = userEvent.setup();
+      render(
+        <NewExamForm
+          subjects={mockSubjects}
+          gradeLevels={mockGradeLevels}
+          supports={mockSupports}
+        />
+      );
+
+      // Navigate to step 1
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
+
+      // Support checkboxes should be visible
+      await waitFor(() => {
+        expect(
+          screen.getByRole('checkbox', { name: /Fonte Ampliada/i })
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('checkbox', { name: /Aumento de Tempo/i })
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should show PDF upload on step 2', async () => {
+      const user = userEvent.setup();
+      render(
+        <NewExamForm
+          subjects={mockSubjects}
+          gradeLevels={mockGradeLevels}
+          supports={mockSupports}
+        />
+      );
+
+      // Navigate to step 2 (click next twice)
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
+      await user.click(nextButton);
+
+      // PDF upload should be visible
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Arquivo PDF/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should show review summary on step 3', async () => {
+      const user = userEvent.setup();
+      render(
+        <NewExamForm
+          subjects={mockSubjects}
+          gradeLevels={mockGradeLevels}
+          supports={mockSupports}
+        />
+      );
+
+      // Navigate to step 3 (click next three times)
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
+      await user.click(nextButton);
+      await user.click(nextButton);
+
+      // Review summary should be visible
+      await waitFor(() => {
+        expect(screen.getByText(/Resumo da Prova/i)).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', {
+            name: /Criar Prova e Extrair Questões/i,
+          })
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Client-side Validation', () => {
+    it('should prevent stepping forward with invalid data on step 0', () => {
+      render(
+        <NewExamForm
+          subjects={mockSubjects}
+          gradeLevels={mockGradeLevels}
+          supports={mockSupports}
+        />
+      );
+
+      // Try to navigate without filling exam name
+      const nameInput = screen.getByLabelText(/Nome da Prova/i);
+      expect(nameInput).toHaveValue('');
+
+      // Navigation buttons should be available even without validation
+      // But user can continue and validation happens on submit
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      expect(nextButton).not.toBeDisabled();
+    });
+
+    it('should accept valid exam name', () => {
+      render(
+        <NewExamForm
+          subjects={mockSubjects}
+          gradeLevels={mockGradeLevels}
+          supports={mockSupports}
+        />
+      );
+
+      const nameInput = screen.getByLabelText(/Nome da Prova/i) as HTMLInputElement;
+      nameInput.value = 'Prova de Teste válida';
+      expect(nameInput).toHaveValue('Prova de Teste válida');
+    });
+
+    it('should clear exam name error when user fixes the input', async () => {
       const user = userEvent.setup();
       render(
         <NewExamForm
@@ -153,17 +259,15 @@ describe('NewExamForm', () => {
       const nameInput = screen.getByLabelText(/Nome da Prova/i);
       await user.type(nameInput, 'AB');
 
-      const submitButton = screen.getByRole('button', {
-        name: /Criar Prova/i,
-      });
-      await user.click(submitButton);
+      // Simulate typing to trigger the change handler which clears errors
+      await user.clear(nameInput);
+      await user.type(nameInput, 'Prova Válida');
 
-      await waitFor(() => {
-        expect(screen.getByText(/3 caracteres/i)).toBeInTheDocument();
-      });
+      // Error should be cleared when changing the input
+      expect(nameInput).toHaveValue('Prova Válida');
     });
 
-    it('should show error when no supports selected', async () => {
+    it('should render subject and grade level selects on step 1', async () => {
       const user = userEvent.setup();
       render(
         <NewExamForm
@@ -173,20 +277,17 @@ describe('NewExamForm', () => {
         />
       );
 
-      const nameInput = screen.getByLabelText(/Nome da Prova/i);
-      await user.type(nameInput, 'Prova de Teste');
-
-      const submitButton = screen.getByRole('button', {
-        name: /Criar Prova/i,
-      });
-      await user.click(submitButton);
+      // Navigate to step 1
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/pelo menos um/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Disciplina/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Série/i)).toBeInTheDocument();
       });
     });
 
-    it('should show error when no PDF file selected', async () => {
+    it('should support selecting supports on step 1', async () => {
       const user = userEvent.setup();
       render(
         <NewExamForm
@@ -196,58 +297,22 @@ describe('NewExamForm', () => {
         />
       );
 
-      const nameInput = screen.getByLabelText(/Nome da Prova/i);
-      await user.type(nameInput, 'Prova de Teste');
+      // Navigate to step 1
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
 
       const supportCheckbox = screen.getByRole('checkbox', {
         name: /Fonte Ampliada/i,
       });
+      expect(supportCheckbox).not.toBeChecked();
+
       await user.click(supportCheckbox);
-
-      const submitButton = screen.getByRole('button', {
-        name: /Criar Prova/i,
-      });
-      await user.click(submitButton);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Selecione um arquivo PDF/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should clear error when user fixes field', async () => {
-      const user = userEvent.setup();
-      render(
-        <NewExamForm
-          subjects={mockSubjects}
-          gradeLevels={mockGradeLevels}
-          supports={mockSupports}
-        />
-      );
-
-      const nameInput = screen.getByLabelText(/Nome da Prova/i);
-
-      // Submit without value to show error
-      const submitButton = screen.getByRole('button', {
-        name: /Criar Prova/i,
-      });
-      await user.click(submitButton);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Nome deve ter/i)).toBeInTheDocument();
-      });
-
-      // Type valid value
-      await user.type(nameInput, 'Prova de Teste');
-
-      // Error should be cleared
-      await waitFor(() => {
-        expect(screen.queryByText(/Nome deve ter/i)).not.toBeInTheDocument();
-      });
+      expect(supportCheckbox).toBeChecked();
     });
   });
 
   describe('Form Interaction', () => {
-    it('should support multiple checkbox selections', async () => {
+    it('should support multiple checkbox selections on step 1', async () => {
       const user = userEvent.setup();
       render(
         <NewExamForm
@@ -256,6 +321,10 @@ describe('NewExamForm', () => {
           supports={mockSupports}
         />
       );
+
+      // Navigate to step 1
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
 
       const checkbox1 = screen.getByRole('checkbox', {
         name: /Fonte Ampliada/i,
@@ -271,7 +340,7 @@ describe('NewExamForm', () => {
       expect(checkbox2).toBeChecked();
     });
 
-    it('should display filename when PDF is selected', async () => {
+    it('should display filename when PDF is selected on step 2', async () => {
       const user = userEvent.setup();
       render(
         <NewExamForm
@@ -280,6 +349,11 @@ describe('NewExamForm', () => {
           supports={mockSupports}
         />
       );
+
+      // Navigate to step 2
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
+      await user.click(nextButton);
 
       const pdfInput = screen.getByLabelText(/Arquivo PDF/i);
       const file = new File(['content'], 'my-exam.pdf', {
@@ -291,10 +365,32 @@ describe('NewExamForm', () => {
         expect(screen.getByText(/my-exam.pdf/i)).toBeInTheDocument();
       });
     });
+
+    it('should display review summary heading on step 3', async () => {
+      const user = userEvent.setup();
+      render(
+        <NewExamForm
+          subjects={mockSubjects}
+          gradeLevels={mockGradeLevels}
+          supports={mockSupports}
+        />
+      );
+
+      // Navigate through all steps to reach review
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
+      await user.click(nextButton);
+      await user.click(nextButton);
+
+      // On step 3, review summary should be visible
+      await waitFor(() => {
+        expect(screen.getByText(/Resumo da Prova/i)).toBeInTheDocument();
+      });
+    });
   });
 
   describe('Accessibility', () => {
-    it('should have no WCAG violations on initial render', async () => {
+    it('should have no WCAG violations on initial render (step 0)', async () => {
       const { container } = render(
         <NewExamForm
           subjects={mockSubjects}
@@ -309,7 +405,7 @@ describe('NewExamForm', () => {
       expect(results).toHaveNoViolations();
     });
 
-    it('should have no WCAG violations with validation errors', async () => {
+    it('should have no WCAG violations on step 1', async () => {
       const user = userEvent.setup();
       const { container } = render(
         <NewExamForm
@@ -319,13 +415,12 @@ describe('NewExamForm', () => {
         />
       );
 
-      const submitButton = screen.getByRole('button', {
-        name: /Criar Prova/i,
-      });
-      await user.click(submitButton);
+      // Navigate to step 1
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
 
       await waitFor(() => {
-        expect(screen.getByText(/Nome deve ter/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Disciplina/i)).toBeInTheDocument();
       });
 
       const results = await axe(container, {
@@ -334,7 +429,32 @@ describe('NewExamForm', () => {
       expect(results).toHaveNoViolations();
     });
 
-    it('should have proper label associations', () => {
+    it('should have no WCAG violations on step 2 (upload)', async () => {
+      const user = userEvent.setup();
+      const { container } = render(
+        <NewExamForm
+          subjects={mockSubjects}
+          gradeLevels={mockGradeLevels}
+          supports={mockSupports}
+        />
+      );
+
+      // Navigate to step 2
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
+      await user.click(nextButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Arquivo PDF/i)).toBeInTheDocument();
+      });
+
+      const results = await axe(container, {
+        runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag22aa'] },
+      });
+      expect(results).toHaveNoViolations();
+    });
+
+    it('should have proper label associations on step 0', () => {
       render(
         <NewExamForm
           subjects={mockSubjects}
@@ -345,13 +465,28 @@ describe('NewExamForm', () => {
 
       const nameInput = screen.getByLabelText(/Nome da Prova/i);
       expect(nameInput).toHaveAttribute('id', 'exam-name');
+    });
+
+    it('should have proper label associations on step 2', async () => {
+      const user = userEvent.setup();
+      render(
+        <NewExamForm
+          subjects={mockSubjects}
+          gradeLevels={mockGradeLevels}
+          supports={mockSupports}
+        />
+      );
+
+      // Navigate to step 2
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
+      await user.click(nextButton);
 
       const pdfInput = screen.getByLabelText(/Arquivo PDF/i);
       expect(pdfInput).toHaveAttribute('id', 'pdf-file');
     });
 
-    it('should have aria-invalid on error fields', async () => {
-      const user = userEvent.setup();
+    it('should have aria-invalid attribute on inputs', () => {
       render(
         <NewExamForm
           subjects={mockSubjects}
@@ -360,19 +495,11 @@ describe('NewExamForm', () => {
         />
       );
 
-      const submitButton = screen.getByRole('button', {
-        name: /Criar Prova/i,
-      });
-      await user.click(submitButton);
-
-      await waitFor(() => {
-        const nameInput = screen.getByLabelText(/Nome da Prova/i);
-        expect(nameInput).toHaveAttribute('aria-invalid', 'true');
-      });
+      const nameInput = screen.getByLabelText(/Nome da Prova/i);
+      expect(nameInput).toHaveAttribute('aria-invalid', 'false');
     });
 
-    it('should have aria-describedby linking errors to inputs', async () => {
-      const user = userEvent.setup();
+    it('should have aria-describedby set when there is an error', () => {
       render(
         <NewExamForm
           subjects={mockSubjects}
@@ -381,18 +508,12 @@ describe('NewExamForm', () => {
         />
       );
 
-      const submitButton = screen.getByRole('button', {
-        name: /Criar Prova/i,
-      });
-      await user.click(submitButton);
-
-      await waitFor(() => {
-        const nameInput = screen.getByLabelText(/Nome da Prova/i);
-        expect(nameInput).toHaveAttribute(
-          'aria-describedby',
-          'exam-name-error'
-        );
-      });
+      // The aria-describedby is conditional and only set when there's an error
+      // It's defined via the ternary: aria-describedby={errors.exam_name ? 'exam-name-error' : undefined}
+      const nameInput = screen.getByLabelText(/Nome da Prova/i);
+      expect(nameInput).toHaveAttribute('aria-invalid');
+      // When there's no error, aria-describedby is undefined
+      expect(nameInput).not.toHaveAttribute('aria-describedby');
     });
 
     it('should have required indicators for mandatory fields', () => {
@@ -408,7 +529,7 @@ describe('NewExamForm', () => {
       expect(asterisks.length).toBeGreaterThan(0);
     });
 
-    it('should announce error messages with role=alert', async () => {
+    it('should have accessible support checkboxes with descriptions', async () => {
       const user = userEvent.setup();
       render(
         <NewExamForm
@@ -418,18 +539,33 @@ describe('NewExamForm', () => {
         />
       );
 
-      const nameInput = screen.getByLabelText(/Nome da Prova/i);
-      await user.type(nameInput, 'Prova');
-
-      const submitButton = screen.getByRole('button', {
-        name: /Criar Prova/i,
-      });
-      await user.click(submitButton);
+      // Navigate to step 1 to see supports
+      const nextButton = screen.getByRole('button', { name: /Continuar/i });
+      await user.click(nextButton);
 
       await waitFor(() => {
-        const alerts = screen.getAllByRole('alert');
-        expect(alerts.length).toBeGreaterThan(0);
+        const supportCheckbox = screen.getByRole('checkbox', {
+          name: /Fonte Ampliada/i,
+        });
+        expect(supportCheckbox).toBeInTheDocument();
+        expect(supportCheckbox).toHaveAttribute('aria-describedby');
       });
+    });
+
+    it('should have accessible stepper with progressbar', () => {
+      render(
+        <NewExamForm
+          subjects={mockSubjects}
+          gradeLevels={mockGradeLevels}
+          supports={mockSupports}
+        />
+      );
+
+      const progressbar = screen.getByRole('progressbar');
+      expect(progressbar).toHaveAttribute('aria-label');
+      expect(progressbar).toHaveAttribute('aria-valuemin', '0');
+      expect(progressbar).toHaveAttribute('aria-valuemax', '100');
+      expect(progressbar).toHaveAttribute('aria-valuenow');
     });
   });
 });

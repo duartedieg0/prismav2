@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Stepper } from '@/components/ui/stepper';
 import { AlertCircle, FileUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -55,6 +56,8 @@ interface FormErrors {
   submit?: string;
 }
 
+const STEPS = ['Informações', 'Configurações', 'Upload', 'Revisão'];
+
 export function NewExamForm({
   subjects,
   gradeLevels,
@@ -62,6 +65,7 @@ export function NewExamForm({
 }: NewExamFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
   const [errors, setErrors] = useState<FormErrors>({});
   const [formData, setFormData] = useState({
     exam_name: '',
@@ -199,6 +203,15 @@ export function NewExamForm({
     }
   };
 
+  // Get subject name for review step
+  const selectedSubjectName =
+    subjects.find((s) => s.id === formData.subject_id)?.name || '';
+  const selectedGradeLevelName =
+    gradeLevels.find((g) => g.id === formData.grade_level_id)?.name || '';
+  const selectedSupportNames = supports
+    .filter((s) => formData.supports.includes(s.id))
+    .map((s) => s.name);
+
   return (
     <div className="w-full max-w-2xl mx-auto p-4 sm:p-6">
       <Card className="p-6 sm:p-8">
@@ -211,204 +224,253 @@ export function NewExamForm({
           </p>
         </div>
 
+        {/* Stepper */}
+        <Stepper steps={STEPS} currentStep={currentStep} className="mb-8" />
+
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Exam Name */}
-          <div className="space-y-2">
-            <Label htmlFor="exam-name" className="text-sm font-medium">
-              Nome da Prova <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="exam-name"
-              type="text"
-              placeholder="Ex: Prova de Matemática - 1º Bimestre"
-              value={formData.exam_name}
-              onChange={(e) => handleExamNameChange(e.target.value)}
-              disabled={isLoading}
-              aria-invalid={!!errors.exam_name}
-              aria-describedby={errors.exam_name ? 'exam-name-error' : undefined}
-              className="w-full"
-            />
-            {errors.exam_name && (
-              <div
-                id="exam-name-error"
-                className="flex items-center gap-2 text-sm text-destructive"
-                role="alert"
-              >
-                <AlertCircle className="h-4 w-4" />
-                {errors.exam_name}
-              </div>
-            )}
-          </div>
-
-          {/* Subject */}
-          <div className="space-y-2">
-            <Label htmlFor="subject" className="text-sm font-medium">
-              Disciplina <span className="text-destructive">*</span>
-            </Label>
-            <Select
-              value={formData.subject_id}
-              onValueChange={handleSubjectChange}
-              disabled={isLoading}
-            >
-              <SelectTrigger
-                id="subject"
-                aria-invalid={!!errors.subject_id}
-                aria-describedby={
-                  errors.subject_id ? 'subject-error' : undefined
-                }
-              >
-                <SelectValue placeholder="Selecione uma disciplina" />
-              </SelectTrigger>
-              <SelectContent>
-                {subjects.map((subject) => (
-                  <SelectItem key={subject.id} value={subject.id}>
-                    {subject.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.subject_id && (
-              <div
-                id="subject-error"
-                className="flex items-center gap-2 text-sm text-destructive"
-                role="alert"
-              >
-                <AlertCircle className="h-4 w-4" />
-                {errors.subject_id}
-              </div>
-            )}
-          </div>
-
-          {/* Grade Level */}
-          <div className="space-y-2">
-            <Label htmlFor="grade-level" className="text-sm font-medium">
-              Série <span className="text-destructive">*</span>
-            </Label>
-            <Select
-              value={formData.grade_level_id}
-              onValueChange={handleGradeLevelChange}
-              disabled={isLoading}
-            >
-              <SelectTrigger
-                id="grade-level"
-                aria-invalid={!!errors.grade_level_id}
-                aria-describedby={
-                  errors.grade_level_id ? 'grade-level-error' : undefined
-                }
-              >
-                <SelectValue placeholder="Selecione uma série" />
-              </SelectTrigger>
-              <SelectContent>
-                {gradeLevels.map((grade) => (
-                  <SelectItem key={grade.id} value={grade.id}>
-                    {grade.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.grade_level_id && (
-              <div
-                id="grade-level-error"
-                className="flex items-center gap-2 text-sm text-destructive"
-                role="alert"
-              >
-                <AlertCircle className="h-4 w-4" />
-                {errors.grade_level_id}
-              </div>
-            )}
-          </div>
-
-          {/* Supports Checkboxes */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium block">
-              Suportes Educacionais <span className="text-destructive">*</span>
-            </Label>
+          {/* Step 0: Informações (Exam Name) */}
+          {currentStep === 0 && (
             <div className="space-y-2">
-              {supports.map((support) => (
-                <div key={support.id} className="flex items-start gap-3">
-                  <Checkbox
-                    id={`support-${support.id}`}
-                    checked={formData.supports.includes(support.id)}
-                    onCheckedChange={() => handleSupportToggle(support.id)}
-                    disabled={isLoading}
+              <Label htmlFor="exam-name" className="text-sm font-medium">
+                Nome da Prova <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="exam-name"
+                type="text"
+                placeholder="Ex: Prova de Matemática - 1º Bimestre"
+                value={formData.exam_name}
+                onChange={(e) => handleExamNameChange(e.target.value)}
+                disabled={isLoading}
+                aria-invalid={!!errors.exam_name}
+                aria-describedby={errors.exam_name ? 'exam-name-error' : undefined}
+                className="w-full"
+              />
+              {errors.exam_name && (
+                <div
+                  id="exam-name-error"
+                  className="flex items-center gap-2 text-sm text-destructive"
+                  role="alert"
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  {errors.exam_name}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 1: Configurações (Subject, Grade Level, Supports) */}
+          {currentStep === 1 && (
+            <>
+              {/* Subject */}
+              <div className="space-y-2">
+                <Label htmlFor="subject" className="text-sm font-medium">
+                  Disciplina <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={formData.subject_id}
+                  onValueChange={handleSubjectChange}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger
+                    id="subject"
+                    aria-invalid={!!errors.subject_id}
                     aria-describedby={
-                      support.description ? `support-desc-${support.id}` : undefined
+                      errors.subject_id ? 'subject-error' : undefined
                     }
-                  />
-                  <div className="flex-1">
-                    <Label
-                      htmlFor={`support-${support.id}`}
-                      className="text-sm font-normal cursor-pointer"
-                    >
-                      {support.name}
-                    </Label>
-                    {support.description && (
-                      <p
-                        id={`support-desc-${support.id}`}
-                        className="text-xs text-muted-foreground mt-1"
-                      >
-                        {support.description}
-                      </p>
-                    )}
+                  >
+                    <SelectValue placeholder="Selecione uma disciplina" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjects.map((subject) => (
+                      <SelectItem key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.subject_id && (
+                  <div
+                    id="subject-error"
+                    className="flex items-center gap-2 text-sm text-destructive"
+                    role="alert"
+                  >
+                    <AlertCircle className="h-4 w-4" />
+                    {errors.subject_id}
+                  </div>
+                )}
+              </div>
+
+              {/* Grade Level */}
+              <div className="space-y-2">
+                <Label htmlFor="grade-level" className="text-sm font-medium">
+                  Série <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={formData.grade_level_id}
+                  onValueChange={handleGradeLevelChange}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger
+                    id="grade-level"
+                    aria-invalid={!!errors.grade_level_id}
+                    aria-describedby={
+                      errors.grade_level_id ? 'grade-level-error' : undefined
+                    }
+                  >
+                    <SelectValue placeholder="Selecione uma série" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gradeLevels.map((grade) => (
+                      <SelectItem key={grade.id} value={grade.id}>
+                        {grade.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.grade_level_id && (
+                  <div
+                    id="grade-level-error"
+                    className="flex items-center gap-2 text-sm text-destructive"
+                    role="alert"
+                  >
+                    <AlertCircle className="h-4 w-4" />
+                    {errors.grade_level_id}
+                  </div>
+                )}
+              </div>
+
+              {/* Supports Checkboxes */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium block">
+                  Suportes Educacionais <span className="text-destructive">*</span>
+                </Label>
+                <div className="space-y-2">
+                  {supports.map((support) => (
+                    <div key={support.id} className="flex items-start gap-3">
+                      <Checkbox
+                        id={`support-${support.id}`}
+                        checked={formData.supports.includes(support.id)}
+                        onCheckedChange={() => handleSupportToggle(support.id)}
+                        disabled={isLoading}
+                        aria-describedby={
+                          support.description ? `support-desc-${support.id}` : undefined
+                        }
+                      />
+                      <div className="flex-1">
+                        <Label
+                          htmlFor={`support-${support.id}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {support.name}
+                        </Label>
+                        {support.description && (
+                          <p
+                            id={`support-desc-${support.id}`}
+                            className="text-xs text-muted-foreground mt-1"
+                          >
+                            {support.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {errors.supports && (
+                  <div
+                    className="flex items-center gap-2 text-sm text-destructive"
+                    role="alert"
+                  >
+                    <AlertCircle className="h-4 w-4" />
+                    {errors.supports}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Step 2: Upload (PDF File) */}
+          {currentStep === 2 && (
+            <div className="space-y-2">
+              <Label htmlFor="pdf-file" className="text-sm font-medium">
+                Arquivo PDF <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="pdf-file"
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  onChange={handleFileChange}
+                  disabled={isLoading}
+                  aria-invalid={!!errors.pdf_file}
+                  aria-describedby={
+                    errors.pdf_file ? 'pdf-file-error' : 'pdf-file-hint'
+                  }
+                  className="w-full cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer"
+                />
+              </div>
+              {pdfFileName && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <FileUp className="h-4 w-4" />
+                  {pdfFileName}
+                </div>
+              )}
+              {!errors.pdf_file && (
+                <p
+                  id="pdf-file-hint"
+                  className="text-xs text-muted-foreground"
+                >
+                  Máximo de 10 MB. Apenas arquivos PDF são aceitos.
+                </p>
+              )}
+              {errors.pdf_file && (
+                <div
+                  id="pdf-file-error"
+                  className="flex items-center gap-2 text-sm text-destructive"
+                  role="alert"
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  {errors.pdf_file}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 3: Revisão (Review Summary) */}
+          {currentStep === 3 && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border bg-muted/50 p-4">
+                <h3 className="text-sm font-semibold mb-3">Resumo da Prova</h3>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground mb-1">Nome da Prova</p>
+                    <p className="font-medium">{formData.exam_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Disciplina</p>
+                    <p className="font-medium">{selectedSubjectName}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Série</p>
+                    <p className="font-medium">{selectedGradeLevelName}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Suportes Educacionais</p>
+                    <p className="font-medium">
+                      {selectedSupportNames.length > 0
+                        ? selectedSupportNames.join(', ')
+                        : 'Nenhum selecionado'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Arquivo PDF</p>
+                    <p className="font-medium">
+                      {pdfFileName || 'Nenhum arquivo selecionado'}
+                    </p>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-            {errors.supports && (
-              <div
-                className="flex items-center gap-2 text-sm text-destructive"
-                role="alert"
-              >
-                <AlertCircle className="h-4 w-4" />
-                {errors.supports}
-              </div>
-            )}
-          </div>
-
-          {/* PDF File Upload */}
-          <div className="space-y-2">
-            <Label htmlFor="pdf-file" className="text-sm font-medium">
-              Arquivo PDF <span className="text-destructive">*</span>
-            </Label>
-            <div className="relative">
-              <Input
-                id="pdf-file"
-                type="file"
-                accept=".pdf,application/pdf"
-                onChange={handleFileChange}
-                disabled={isLoading}
-                aria-invalid={!!errors.pdf_file}
-                aria-describedby={
-                  errors.pdf_file ? 'pdf-file-error' : 'pdf-file-hint'
-                }
-                className="w-full cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer"
-              />
-            </div>
-            {pdfFileName && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <FileUp className="h-4 w-4" />
-                {pdfFileName}
-              </div>
-            )}
-            {!errors.pdf_file && (
-              <p
-                id="pdf-file-hint"
-                className="text-xs text-muted-foreground"
-              >
-                Máximo de 10 MB. Apenas arquivos PDF são aceitos.
-              </p>
-            )}
-            {errors.pdf_file && (
-              <div
-                id="pdf-file-error"
-                className="flex items-center gap-2 text-sm text-destructive"
-                role="alert"
-              >
-                <AlertCircle className="h-4 w-4" />
-                {errors.pdf_file}
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Submit Error */}
           {errors.submit && (
@@ -421,16 +483,29 @@ export function NewExamForm({
             </div>
           )}
 
-          {/* Submit Button */}
-          <div className="flex gap-3 pt-4">
+          {/* Navigation */}
+          <div className="flex gap-3 justify-between pt-4">
             <Button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1"
-              size="lg"
+              type="button"
+              variant="outline"
+              onClick={() => setCurrentStep((s) => s - 1)}
+              disabled={currentStep === 0}
             >
-              {isLoading ? 'Criando prova...' : 'Criar Prova e Extrair Questões'}
+              Voltar
             </Button>
+            {currentStep < STEPS.length - 1 ? (
+              <Button
+                type="button"
+                variant="default"
+                onClick={() => setCurrentStep((s) => s + 1)}
+              >
+                Continuar
+              </Button>
+            ) : (
+              <Button type="submit" variant="default" disabled={isLoading}>
+                {isLoading ? 'Enviando...' : 'Criar Prova e Extrair Questões'}
+              </Button>
+            )}
           </div>
         </form>
       </Card>
