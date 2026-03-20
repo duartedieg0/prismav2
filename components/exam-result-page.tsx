@@ -12,6 +12,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import QuestionResultCard from './question-result-card';
 import { Button } from '@/components/ui/button';
+import { ArrowLeft, Plus } from 'lucide-react';
 import type { Question } from '@/lib/types/extraction';
 import type { Adaptation } from '@/lib/types/adaptation';
 import type { QuestionFeedback } from '@/lib/types/feedback';
@@ -101,11 +102,13 @@ export default function ExamResultPage({ examId }: ExamResultPageProps) {
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-3/4 animate-pulse" />
-          <div className="h-32 bg-gray-200 rounded animate-pulse" />
-          <div className="h-32 bg-gray-200 rounded animate-pulse" />
+      <div className="min-h-screen bg-background">
+        <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          <div className="space-y-6">
+            <div className="h-10 bg-surface-container-low rounded w-2/3 animate-pulse" />
+            <div className="h-48 bg-surface-container-low rounded animate-pulse" />
+            <div className="h-48 bg-surface-container-low rounded animate-pulse" />
+          </div>
         </div>
       </div>
     );
@@ -113,71 +116,106 @@ export default function ExamResultPage({ examId }: ExamResultPageProps) {
 
   if (error || !exam) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <h2 className="font-semibold text-red-900 mb-2">Error</h2>
-          <p className="text-red-700 mb-4">{error || 'Failed to load exam results'}</p>
-          <Button variant="outline" onClick={fetchExamResult}>
-            Try Again
-          </Button>
+      <div className="min-h-screen bg-background">
+        <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          <div className="bg-destructive/10 rounded-lg p-6 sm:p-8">
+            <h2 className="font-display text-heading font-bold text-destructive mb-3">
+              Erro ao carregar resultados
+            </h2>
+            <p className="text-body text-muted-foreground mb-6">
+              {error || 'Não foi possível carregar os resultados da adaptação'}
+            </p>
+            <Button onClick={fetchExamResult} variant="outline" size="sm">
+              Tentar novamente
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <main className="max-w-4xl mx-auto p-6 space-y-8">
-      {/* Header */}
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-display-md font-display text-foreground">
-          Resultado da Adaptação
-        </h1>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">Exportar PDF</Button>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/dashboard">Voltar ao Dashboard</Link>
+    <main className="min-h-screen bg-background">
+      <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header Section */}
+        <div className="mb-10 sm:mb-12">
+          {/* Back Button */}
+          <Button asChild variant="ghost" size="sm" className="mb-6">
+            <Link href="/dashboard" className="inline-flex items-center gap-2">
+              <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+              Voltar
+            </Link>
           </Button>
+
+          {/* Page Title and Metadata */}
+          <div className="mb-8">
+            <h1 className="text-display-md font-display font-bold text-foreground mb-2">
+              Resultado da Adaptação
+            </h1>
+            {exam.title && (
+              <p className="text-body text-muted-foreground">
+                {exam.title}
+              </p>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button variant="outline" size="sm">
+              Exportar PDF
+            </Button>
+            <Button asChild size="sm" className="bg-primary hover:bg-primary-container">
+              <Link href="/dashboard/exams" className="inline-flex items-center gap-2">
+                <Plus className="w-4 h-4" aria-hidden="true" />
+                Nova Prova
+              </Link>
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Questions */}
-      {exam.questions.length === 0 ? (
-        <div className="bg-gray-50 border rounded-lg p-8 text-center">
-          <p className="text-gray-600">No questions found in this exam</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {exam.questions.map((question) => {
-            const adaptation = question.adaptations?.[0];
-            if (!adaptation) return null;
+        {/* Questions Section */}
+        {exam.questions.length === 0 ? (
+          <div className="bg-surface-container-low rounded-lg p-8 sm:p-10 text-center">
+            <p className="text-body text-muted-foreground">
+              Nenhuma questão encontrada nesta prova
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6 mb-12">
+            {exam.questions.map((question) => {
+              const adaptation = question.adaptations?.[0];
+              if (!adaptation) return null;
 
-            const questionFeedback = feedbacks.find(
-              (f) => f.adaptation_id === adaptation.id
-            ) || null;
+              const questionFeedback = feedbacks.find(
+                (f) => f.adaptation_id === adaptation.id
+              ) || null;
 
-            return (
-              <QuestionResultCard
-                key={question.id}
-                question={question}
-                adaptation={adaptation}
-                feedback={questionFeedback}
-                onFeedbackSubmit={handleFeedbackSubmit}
-              />
-            );
-          })}
-        </div>
-      )}
+              return (
+                <QuestionResultCard
+                  key={question.id}
+                  question={question}
+                  adaptation={adaptation}
+                  feedback={questionFeedback}
+                  onFeedbackSubmit={handleFeedbackSubmit}
+                />
+              );
+            })}
+          </div>
+        )}
 
-      {/* Summary Section */}
-      <div className="border-t pt-8">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h2 className="font-semibold text-blue-900 mb-2">Feedback Summary</h2>
-          <p className="text-blue-700 text-sm mb-4">
-            You have provided feedback on {feedbacks.length} question{feedbacks.length !== 1 ? 's' : ''}.
-          </p>
-          <Button onClick={fetchExamResult} variant="outline">
-            Refresh Results
-          </Button>
+        {/* Summary Section */}
+        <div className="border-t border-border pt-10">
+          <div className="bg-surface-container-low rounded-lg p-6 sm:p-8">
+            <h2 className="font-display text-heading font-bold text-foreground mb-3">
+              Resumo de Feedback
+            </h2>
+            <p className="text-body text-muted-foreground mb-6">
+              Você forneceu feedback em {feedbacks.length} questão{feedbacks.length !== 1 ? 's' : ''}.
+            </p>
+            <Button onClick={fetchExamResult} variant="outline" size="sm">
+              Atualizar
+            </Button>
+          </div>
         </div>
       </div>
     </main>
