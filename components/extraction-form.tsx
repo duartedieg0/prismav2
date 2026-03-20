@@ -175,17 +175,24 @@ export function ExtractionForm({
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 sm:p-6">
-      <form onSubmit={handleSubmit} className="space-y-6 flex flex-col min-h-screen">
-        {/* Header Section */}
-        <div className="space-y-4">
-          {/* Exam Name */}
-          <h1 className="text-3xl font-bold text-foreground">{examName}</h1>
+    <div className="min-h-screen bg-surface-container-low py-10 px-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-10">
+          <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-2">
+            Revisão de Extração
+          </p>
+          <h1 className="text-4xl font-display font-black text-foreground tracking-tight mb-3">
+            {examName}
+          </h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Revise as questões extraídas do PDF e forneça as respostas corretas antes de adaptar.
+          </p>
 
-          {/* Review Section */}
+          {/* Review Section with Confirm All Button */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-lg font-display font-bold text-foreground">
+              <h2 className="text-base font-display font-semibold text-foreground">
                 Revisar Questões Extraídas
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
@@ -198,71 +205,63 @@ export function ExtractionForm({
               size="sm"
               onClick={confirmAll}
               disabled={isFullyConfirmed}
+              className="rounded-lg"
             >
               Confirmar todas
             </Button>
           </div>
         </div>
 
-        {/* Submit Error Alert */}
-        {submitError && (
-          <div
-            className="rounded-lg bg-red-50 border border-red-200 p-4 flex gap-3 items-start"
-            role="alert"
-          >
-            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-red-900">
-              <p className="font-semibold">Erro ao enviar respostas</p>
-              <p className="mt-1">{submitError}</p>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Submit Error Alert */}
+          {submitError && (
+            <div
+              className="flex items-start gap-3 rounded-xl bg-destructive/10 p-4"
+              role="alert"
+            >
+              <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm text-destructive font-medium">
+                  {submitError}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Questions */}
-        <div className="space-y-4 flex-1">
-          {questions.map((question, index) => {
-            const isConfirmed = confirmedIds.has(question.id);
-            return (
-              <div
-                key={question.id}
-                className={`transition-all ${
-                  isConfirmed
-                    ? 'border-emerald-200 bg-emerald-50/50 rounded-lg p-6'
-                    : ''
-                }`}
-              >
-                <Card
-                  className={`p-6 space-y-4 ${
-                    isConfirmed ? 'border-emerald-200 bg-emerald-50/50' : ''
-                  }`}
+          {/* Questions */}
+          <div className="space-y-6">
+            {questions.map((question, index) => {
+              const isConfirmed = confirmedIds.has(question.id);
+              return (
+                <div
+                  key={question.id}
+                  className="rounded-xl bg-card p-8 space-y-6 transition-all"
                 >
-                  {/* Question Header with Confirmation Badge */}
+                  {/* Question Header */}
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-foreground">
-                        Questão {index + 1}
-                      </h3>
-                      <p className="mt-2 text-base text-foreground leading-relaxed">
-                        {question.question_text}
+                    <div className="flex-1 space-y-2">
+                      <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                        Questão {index + 1} de {totalCount}
                       </p>
+                      <h2 className="text-lg font-semibold text-foreground leading-relaxed">
+                        {question.question_text}
+                      </h2>
                     </div>
                     {isConfirmed && (
-                      <div className="flex-shrink-0 mt-1">
-                        <div className="flex items-center gap-1 text-emerald-600 font-medium text-sm">
-                          <Check className="h-4 w-4" />
-                          Confirmada
-                        </div>
+                      <div className="flex-shrink-0 flex items-center gap-1.5 text-primary font-medium text-sm">
+                        <Check className="h-4 w-4" aria-hidden="true" />
+                        Confirmada
                       </div>
                     )}
                   </div>
 
-                  {/* Input Section - Custom rendering to avoid QuestionInput duplication */}
-                  <div className="space-y-3">
+                  {/* Input Section */}
+                  <div className="space-y-4 border-t border-surface-container pt-6">
                     {question.question_type === 'objective' ? (
                       // Objective question - render inline
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-3">
-                          Selecione sua resposta <span className="text-red-600">*</span>
+                      <div className="space-y-3">
+                        <label className="block text-sm font-medium text-foreground">
+                          Selecione sua resposta <span className="text-destructive">*</span>
                         </label>
                         <div className="space-y-2">
                           {question.alternatives &&
@@ -270,7 +269,7 @@ export function ExtractionForm({
                               ([key, text]) => (
                                 <div
                                   key={key}
-                                  className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 transition-colors"
+                                  className="flex items-center space-x-3 p-3 rounded-lg hover:bg-surface-container transition-colors"
                                 >
                                   <input
                                     type="radio"
@@ -303,12 +302,12 @@ export function ExtractionForm({
                       </div>
                     ) : (
                       // Essay question
-                      <div>
+                      <div className="space-y-3">
                         <label
                           htmlFor={`question-${question.id}`}
-                          className="block text-sm font-medium text-foreground mb-3"
+                          className="block text-sm font-medium text-foreground"
                         >
-                          Sua resposta <span className="text-red-600">*</span>
+                          Sua resposta <span className="text-destructive">*</span>
                         </label>
                         <textarea
                           id={`question-${question.id}`}
@@ -317,7 +316,7 @@ export function ExtractionForm({
                           onChange={(e) =>
                             handleAnswerChange(question.id, e.target.value)
                           }
-                          className="w-full min-h-32 resize-none p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full min-h-32 resize-none p-3 bg-surface-container-low rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary text-foreground placeholder:text-muted-foreground"
                           aria-invalid={!!fieldErrors[question.id]}
                           aria-describedby={
                             fieldErrors[question.id]
@@ -332,10 +331,10 @@ export function ExtractionForm({
                     {fieldErrors[question.id] && (
                       <div
                         id={`error-${question.id}`}
-                        className="text-sm text-red-600 flex items-center gap-2"
+                        className="text-sm text-destructive flex items-center gap-2"
                         role="alert"
                       >
-                        <span className="font-medium">⚠</span>
+                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
                         {fieldErrors[question.id]}
                       </div>
                     )}
@@ -348,9 +347,6 @@ export function ExtractionForm({
                       variant={isConfirmed ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => toggleConfirmation(question.id)}
-                      className={
-                        isConfirmed ? 'bg-emerald-600 hover:bg-emerald-700' : ''
-                      }
                     >
                       {isConfirmed ? (
                         <>
@@ -362,32 +358,35 @@ export function ExtractionForm({
                       )}
                     </Button>
                   </div>
-                </Card>
-              </div>
-            );
-          })}
-        </div>
+                </div>
+              );
+            })}
+          </div>
 
-        {/* Actions Footer */}
-        <div className="flex gap-3 pt-4 border-t mt-auto">
-          <Button
-            type="submit"
-            disabled={isLoading || !isFullyConfirmed}
-            className="flex items-center gap-2"
-          >
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isLoading ? 'Processando...' : 'Próximo'}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-            disabled={isLoading}
-          >
-            Cancelar
-          </Button>
-        </div>
-      </form>
+          {/* Actions Footer */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-surface-container justify-end">
+              <Button
+                type="submit"
+                disabled={isLoading || !isFullyConfirmed}
+                className="rounded-xl font-display font-bold px-8 gap-2 flex-1 sm:flex-none"
+              >
+                {isLoading && (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                )}
+                {isLoading ? 'Processando...' : 'Próximo'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.back()}
+                disabled={isLoading}
+                className="rounded-xl"
+              >
+                Cancelar
+              </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
