@@ -2,13 +2,18 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
-  Brain,
+  Cpu,
+  Bot,
   BookOpen,
-  Layers,
+  GraduationCap,
+  LifeBuoy,
   Users,
   LogOut,
+  UserCircle,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -17,123 +22,131 @@ interface SidebarProps {
   userEmail: string
 }
 
+const navItems = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+]
+
+const adminItems = [
+  { href: '/config/models', label: 'Modelos de IA', icon: Cpu },
+  { href: '/config/agents', label: 'Agentes', icon: Bot },
+  { href: '/config/subjects', label: 'Disciplinas', icon: BookOpen },
+  { href: '/config/grades', label: 'Séries', icon: GraduationCap },
+  { href: '/config/supports', label: 'Suportes', icon: LifeBuoy },
+  { href: '/users', label: 'Usuários', icon: Users },
+]
+
 export function Sidebar({ role, userName, userEmail }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
 
-  const isActive = (href: string) => pathname === href
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
-  const navItems = [
-    {
-      href: '/dashboard',
-      label: 'Dashboard',
-      icon: LayoutDashboard,
-    },
-  ]
-
-  const adminItems = [
-    {
-      href: '/admin/ai-models',
-      label: 'Modelos de IA',
-      icon: Brain,
-    },
-    {
-      href: '/admin/agents',
-      label: 'Agentes',
-      icon: Layers,
-    },
-    {
-      href: '/admin/subjects',
-      label: 'Disciplinas',
-      icon: BookOpen,
-    },
-    {
-      href: '/admin/grades',
-      label: 'Séries',
-      icon: BookOpen,
-    },
-    {
-      href: '/admin/supports',
-      label: 'Suportes',
-      icon: Brain,
-    },
-    {
-      href: '/admin/users',
-      label: 'Usuários',
-      icon: Users,
-    },
-  ]
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   return (
-    <aside className="hidden md:flex md:w-60 md:fixed md:inset-y-0 md:left-0 flex-col bg-slate-950 text-white">
-      {/* Main nav */}
-      <nav
-        className="flex-1 flex flex-col gap-1 p-4"
-        aria-label="Navegação principal"
-      >
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const active = isActive(item.href)
+    <aside
+      className="fixed left-0 top-0 h-screen w-60 z-20 flex flex-col py-6
+                 bg-surface-container-low/80 backdrop-blur-xl
+                 shadow-glass"
+    >
+      {/* Brand */}
+      <div className="px-6 mb-8">
+        <p
+          className="text-lg font-display font-black text-primary tracking-tight flex items-center gap-2"
+          aria-label="Adapte Minha Prova"
+        >
+          <LayoutDashboard className="size-5" aria-hidden="true" />
+          Adapte Minha Prova
+        </p>
+        {role === 'admin' && (
+          <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 mt-1">
+            Painel Admin
+          </p>
+        )}
+      </div>
+
+      {/* Nav principal */}
+      <nav className="flex-1 flex flex-col gap-0.5 px-3" aria-label="Navegação principal">
+        {navItems.map(({ href, label, icon: Icon }) => {
+          const active = isActive(href)
           return (
             <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-                active
-                  ? 'bg-slate-700 text-white'
-                  : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              key={href}
+              href={href}
               aria-current={active ? 'page' : undefined}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-display font-semibold
+                         transition-all duration-200
+                         ${active
+                           ? 'bg-primary-container text-white shadow-sm'
+                           : 'text-foreground/70 hover:text-primary hover:bg-primary/10'
+                         }`}
             >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm font-medium">{item.label}</span>
+              <Icon className="size-5 shrink-0" aria-hidden="true" />
+              {label}
             </Link>
           )
         })}
+
+        {/* Seção admin */}
+        {role === 'admin' && (
+          <>
+            <div className="mt-4 mb-2 px-4">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60">
+                Administração
+              </p>
+            </div>
+            {adminItems.map(({ href, label, icon: Icon }) => {
+              const active = isActive(href)
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-display font-semibold
+                             transition-all duration-200
+                             ${active
+                               ? 'bg-primary-container text-white shadow-sm'
+                               : 'text-foreground/70 hover:text-primary hover:bg-primary/10'
+                             }`}
+                >
+                  <Icon className="size-5 shrink-0" aria-hidden="true" />
+                  {label}
+                </Link>
+              )
+            })}
+          </>
+        )}
       </nav>
 
-      {/* Admin section */}
-      {role === 'admin' && (
-        <nav className="flex-col gap-1 p-4 border-t border-slate-800">
-          <div className="text-xs font-semibold text-slate-400 mb-3 px-3">
-            Administração
-          </div>
-          {adminItems.map((item) => {
-            const Icon = item.icon
-            const active = isActive(item.href)
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-                  active
-                    ? 'bg-slate-700 text-white'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-                aria-current={active ? 'page' : undefined}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm font-medium">{item.label}</span>
-              </Link>
-            )
-          })}
-        </nav>
-      )}
-
-      {/* User footer */}
-      <div className="p-4 border-t border-slate-800">
-        <div className="text-sm mb-3">
-          <div className="font-medium text-white">{userName}</div>
-          <div className="text-xs text-slate-400">{userEmail}</div>
+      {/* Footer */}
+      <div className="mt-auto px-3 pt-4">
+        <div className="px-4 mb-3">
+          <p className="text-sm font-medium text-foreground leading-tight truncate">
+            {userName}
+          </p>
+          <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
         </div>
-        <form action="/api/auth/signout" method="POST">
-          <button
-            type="submit"
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 transition-colors"
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            <span className="text-sm font-medium">Sair</span>
-          </button>
-        </form>
+        <Link
+          href="/profile"
+          className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-display font-semibold
+                     text-foreground/70 hover:text-primary hover:bg-primary/10 transition-all duration-200"
+        >
+          <UserCircle className="size-5 shrink-0" aria-hidden="true" />
+          Perfil
+        </Link>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-display font-semibold
+                     text-foreground/70 hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
+        >
+          <LogOut className="size-5 shrink-0" aria-hidden="true" />
+          Sair
+        </button>
       </div>
     </aside>
   )

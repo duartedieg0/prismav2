@@ -8,7 +8,6 @@ interface AppLayoutProps {
 export async function AppLayout({ children }: AppLayoutProps) {
   const supabase = await createClient()
 
-  // Fetch current user from auth
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -17,7 +16,6 @@ export async function AppLayout({ children }: AppLayoutProps) {
     return <>{children}</>
   }
 
-  // Fetch user profile to get role
   const { data: profile } = await supabase
     .from('profiles')
     .select('full_name, role, email')
@@ -29,13 +27,9 @@ export async function AppLayout({ children }: AppLayoutProps) {
   const userEmail = profile?.email || user.email || ''
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar
-        role={role}
-        userName={userName}
-        userEmail={userEmail}
-      />
-      <main className="flex-1 md:pl-60">
+    <div className="flex min-h-screen bg-background">
+      <Sidebar role={role} userName={userName} userEmail={userEmail} />
+      <main className="flex-1 ml-60 min-h-screen">
         {children}
       </main>
     </div>

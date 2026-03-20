@@ -6,6 +6,16 @@ import { Sidebar } from './sidebar'
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
+  useRouter: () => ({ push: vi.fn() }),
+}))
+
+// Mock supabase client
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({
+    auth: {
+      signOut: vi.fn(),
+    },
+  }),
 }))
 
 describe('Sidebar', () => {
