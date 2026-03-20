@@ -16,7 +16,6 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { ProcessingProgressClient } from './processing-progress-client';
-import { Card } from '@/components/ui/card';
 import { redirect } from 'next/navigation';
 
 interface PageParams {
@@ -77,20 +76,27 @@ export default async function ProcessingPage({ params }: PageParams) {
   }
 
   return (
-    <main className="min-h-screen bg-background py-8">
-      <div className="w-full max-w-2xl mx-auto p-4 sm:p-6">
-        <Card className="p-6 sm:p-8">
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-bold mb-2">{exam.name}</h1>
-              <p className="text-sm text-muted-foreground">
-                Processando adaptações das questões...
-              </p>
-            </div>
+    <main className="flex flex-col items-center justify-center min-h-screen bg-background px-4 py-8">
+      <div className="w-full max-w-md text-center space-y-8">
+        {/* Headline */}
+        <div className="space-y-3">
+          <h1 className="text-display-md font-display font-semibold text-foreground">
+            {exam.name}
+          </h1>
+          <p className="text-body text-muted-foreground">
+            Adaptando sua prova...
+          </p>
+        </div>
 
-            <ProcessingProgressClient examId={examId} />
-          </div>
-        </Card>
+        {/* Progress Component */}
+        <div className="pt-4">
+          <ProcessingProgressClient examId={examId} />
+        </div>
+
+        {/* Subtitle */}
+        <p className="text-small text-muted-foreground">
+          Este processo pode levar alguns minutos
+        </p>
       </div>
     </main>
   );
