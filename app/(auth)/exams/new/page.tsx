@@ -60,7 +60,7 @@ async function fetchGradeLevels(): Promise<GradeLevel[]> {
 async function fetchSupports(): Promise<Support[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from('supports')
+    .from('educational_supports')
     .select('id, name, description')
     .order('name');
 

@@ -13,7 +13,15 @@
       "Read(//c/Users/Diego/Repositorios/prismav2/**)",
       "Bash(done)",
       "Bash(ls:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(npm run:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Skill(update-config)",
+      "Bash(npx skills:*)",
+      "Bash(ls /c/Users/Diego/Repositorios/prismav2/app/\\\\\\(public\\\\\\)/login/page.tsx)",
+      "Bash(ls /c/Users/Diego/Repositorios/prismav2/app/\\\\\\(auth\\\\\\)/exams/[id]/processing/processing-progress-client.tsx)",
+      "Bash(node -e \"const pkg = require\\(''./package.json''\\); const deps = {...pkg.dependencies, ...pkg.devDependencies}; console.log\\(''date-fns:'', deps[''date-fns''] || ''NOT FOUND''\\); console.log\\(''TypeScript:'', deps[''typescript''] || ''NOT FOUND''\\);\")"
     ]
   }
 }
