@@ -56,7 +56,7 @@ interface FormErrors {
   submit?: string;
 }
 
-const STEPS = ['Informações', 'Configurações', 'Upload', 'Revisão'];
+const STEPS = ['Nome', 'Configurações', 'Arquivo', 'Revisão'];
 
 export function NewExamForm({
   subjects,
@@ -215,8 +215,9 @@ export function NewExamForm({
   return (
     <div className="w-full max-w-2xl mx-auto p-4 sm:p-6">
       <Card className="p-6 sm:p-8">
+        {/* Header Section */}
         <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">
+          <h1 className="font-display text-display-md sm:text-display-lg font-bold tracking-tight mb-2">
             Nova Prova
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -224,10 +225,10 @@ export function NewExamForm({
           </p>
         </div>
 
-        {/* Stepper */}
+        {/* Stepper Progress Indicator */}
         <Stepper steps={STEPS} currentStep={currentStep} className="mb-8" />
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-8">
           {/* Step 0: Informações (Exam Name) */}
           {currentStep === 0 && (
             <div className="space-y-2">
@@ -437,36 +438,34 @@ export function NewExamForm({
 
           {/* Step 3: Revisão (Review Summary) */}
           {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-border bg-muted/50 p-4">
-                <h3 className="text-sm font-semibold mb-3">Resumo da Prova</h3>
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <p className="text-muted-foreground mb-1">Nome da Prova</p>
-                    <p className="font-medium">{formData.exam_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Disciplina</p>
-                    <p className="font-medium">{selectedSubjectName}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Série</p>
-                    <p className="font-medium">{selectedGradeLevelName}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Suportes Educacionais</p>
-                    <p className="font-medium">
-                      {selectedSupportNames.length > 0
-                        ? selectedSupportNames.join(', ')
-                        : 'Nenhum selecionado'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Arquivo PDF</p>
-                    <p className="font-medium">
-                      {pdfFileName || 'Nenhum arquivo selecionado'}
-                    </p>
-                  </div>
+            <div className="space-y-6">
+              <h2 className="text-lg font-semibold">Resumo da Prova</h2>
+              <div className="space-y-5">
+                <div className="bg-surface-container-low rounded-lg p-4">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Nome da Prova</p>
+                  <p className="text-base font-medium">{formData.exam_name}</p>
+                </div>
+                <div className="bg-surface-container-low rounded-lg p-4">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Disciplina</p>
+                  <p className="text-base font-medium">{selectedSubjectName}</p>
+                </div>
+                <div className="bg-surface-container-low rounded-lg p-4">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Série</p>
+                  <p className="text-base font-medium">{selectedGradeLevelName}</p>
+                </div>
+                <div className="bg-surface-container-low rounded-lg p-4">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Suportes Educacionais</p>
+                  <p className="text-base font-medium">
+                    {selectedSupportNames.length > 0
+                      ? selectedSupportNames.join(', ')
+                      : 'Nenhum selecionado'}
+                  </p>
+                </div>
+                <div className="bg-surface-container-low rounded-lg p-4">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Arquivo PDF</p>
+                  <p className="text-base font-medium">
+                    {pdfFileName || 'Nenhum arquivo selecionado'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -484,12 +483,13 @@ export function NewExamForm({
           )}
 
           {/* Navigation */}
-          <div className="flex gap-3 justify-between pt-4">
+          <div className="flex gap-4 justify-between pt-8">
             <Button
               type="button"
               variant="outline"
               onClick={() => setCurrentStep((s) => s - 1)}
               disabled={currentStep === 0}
+              className="px-6"
             >
               Voltar
             </Button>
@@ -497,13 +497,52 @@ export function NewExamForm({
               <Button
                 type="button"
                 variant="default"
-                onClick={() => setCurrentStep((s) => s + 1)}
+                onClick={() => {
+                  // Validate current step before proceeding
+                  const stepErrors: FormErrors = {};
+
+                  if (currentStep === 0) {
+                    const nameValidation = validateExamName(formData.exam_name);
+                    if (!nameValidation.valid) {
+                      stepErrors.exam_name = nameValidation.error;
+                    }
+                  } else if (currentStep === 1) {
+                    const subjectValidation = validateSubjectId(formData.subject_id);
+                    if (!subjectValidation.valid) {
+                      stepErrors.subject_id = 'Selecione uma disciplina válida';
+                    }
+                    const gradeValidation = validateGradeLevelId(formData.grade_level_id);
+                    if (!gradeValidation.valid) {
+                      stepErrors.grade_level_id = 'Selecione uma série válida';
+                    }
+                    const supportsValidation = validateSupports(formData.supports);
+                    if (!supportsValidation.valid) {
+                      stepErrors.supports = supportsValidation.error;
+                    }
+                  } else if (currentStep === 2) {
+                    if (!formData.pdf_file) {
+                      stepErrors.pdf_file = 'Selecione um arquivo PDF';
+                    } else {
+                      const pdfValidation = validatePdfFile(formData.pdf_file);
+                      if (!pdfValidation.valid) {
+                        stepErrors.pdf_file = pdfValidation.error;
+                      }
+                    }
+                  }
+
+                  if (Object.keys(stepErrors).length === 0) {
+                    setCurrentStep((s) => s + 1);
+                  } else {
+                    setErrors(stepErrors);
+                  }
+                }}
+                className="px-6"
               >
-                Continuar
+                Próximo
               </Button>
             ) : (
-              <Button type="submit" variant="default" disabled={isLoading}>
-                {isLoading ? 'Enviando...' : 'Criar Prova e Extrair Questões'}
+              <Button type="submit" variant="default" disabled={isLoading} className="px-6">
+                {isLoading ? 'Enviando...' : 'Criar Prova'}
               </Button>
             )}
           </div>
