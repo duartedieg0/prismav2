@@ -3,7 +3,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Brain } from 'lucide-react'
 
 function GoogleIcon() {
   return (
@@ -36,50 +35,54 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8 shadow-md">
-        {/* Logo Section */}
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
-            <Brain className="h-7 w-7 text-primary-foreground" />
-          </div>
-          <span className="text-base font-semibold text-foreground">Adapte Minha Prova</span>
+    <main className="flex min-h-screen w-full flex-col md:flex-row bg-background">
+      {/* Left Panel - Brand */}
+      <div className="flex w-full md:w-1/2 items-center justify-center bg-gradient-to-br from-primary to-primary-container px-6 py-12 md:py-0">
+        <div className="max-w-md text-center md:text-left">
+          <h1 className="font-display text-display-lg font-bold text-primary-foreground mb-4">
+            Adapte Minha Prova
+          </h1>
+          <p className="text-lg font-light text-primary-foreground/90 leading-relaxed">
+            Provas personalizadas com IA. Educação inclusiva e acessível para todos os alunos.
+          </p>
         </div>
+      </div>
 
-        {/* Heading */}
-        <h1 className="mb-2 text-center text-3xl font-bold text-foreground">
-          Bem-vindo de volta
-        </h1>
+      {/* Right Panel - Login Form */}
+      <div className="flex w-full md:w-1/2 items-center justify-center px-6 py-12 md:py-0">
+        <div className="w-full max-w-sm">
+          <div className="mb-8">
+            <h2 className="text-heading font-bold text-foreground mb-2">
+              Bem-vindo
+            </h2>
+            <p className="text-body text-muted-foreground">
+              Entre com sua conta Google para continuar
+            </p>
+          </div>
 
-        {/* Subheading */}
-        <p className="mb-8 text-center text-sm text-muted-foreground">
-          Entre com sua conta Google para continuar
-        </p>
+          <Button
+            onClick={handleGoogleLogin}
+            disabled={isLoading}
+            size="lg"
+            className="w-full gap-3"
+          >
+            {isLoading ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Conectando...
+              </>
+            ) : (
+              <>
+                <GoogleIcon />
+                Entrar com Google
+              </>
+            )}
+          </Button>
 
-        {/* Google Button */}
-        <Button
-          onClick={handleGoogleLogin}
-          disabled={isLoading}
-          size="lg"
-          className="w-full gap-3"
-        >
-          {isLoading ? (
-            <>
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              Conectando...
-            </>
-          ) : (
-            <>
-              <GoogleIcon />
-              Entrar com Google
-            </>
-          )}
-        </Button>
-
-        {/* Privacy Note */}
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Sua privacidade é importante. Veja nossa Política de Privacidade.
-        </p>
+          <p className="mt-8 text-center text-caption text-muted-foreground">
+            Sua privacidade é importante. Veja nossa Política de Privacidade.
+          </p>
+        </div>
       </div>
     </main>
   )
