@@ -1,10 +1,11 @@
 /**
  * ExtractionForm Component
- * Client Component for extracting and confirming questions
+ * Client Component for extracting and confirming questions with step-by-step navigation
+ * - Displays one question at a time for focused review
  * - Manages form state for all questions
- * - Tracks which questions are confirmed
- * - Validates that all questions are confirmed before submission
- * - Submits to POST /api/exams/[id]/answers
+ * - Previous/Next buttons for navigation between questions
+ * - Validates individual questions before advancing
+ * - Submits to POST /api/exams/[id]/answers on final question
  * - Redirects to processing page on success
  */
 
@@ -14,7 +15,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { AlertCircle, Loader2, Check } from 'lucide-react';
+import { AlertCircle, Loader2, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -39,50 +40,72 @@ export function ExtractionForm({
   const [submitError, setSubmitError] = useState<string>('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [confirmedIds, setConfirmedIds] = useState<Set<string>>(new Set());
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
-  // Calculate confirmation progress
-  const confirmedCount = confirmedIds.size;
   const totalCount = questions.length;
-  const isFullyConfirmed = confirmedCount === totalCount && totalCount > 0;
+  const currentQuestion = questions[currentQuestionIndex];
+  const isFirstQuestion = currentQuestionIndex === 0;
+  const isLastQuestion = currentQuestionIndex === totalCount - 1;
 
-  // Toggle confirmation for a question
-  const toggleConfirmation = (questionId: string) => {
-    setConfirmedIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(questionId)) {
-        newSet.delete(questionId);
-      } else {
-        newSet.add(questionId);
-      }
-      return newSet;
-    });
-  };
-
-  // Confirm all questions
-  const confirmAll = () => {
-    const allIds = new Set(questions.map((q) => q.id));
-    setConfirmedIds(allIds);
+  /**
+   * Validate current question: ensure it's answered
+   */
+  const validateCurrentQuestion = (): boolean => {
+    const answer = answers[currentQuestion.id]?.trim();
+    if (!answer) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        [currentQuestion.id]: 'Esta questão é obrigatória',
+      }));
+      return false;
+    }
+    return true;
   };
 
   /**
-   * Validate form: ensure all questions are answered
+   * Handle moving to previous question
    */
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-    let isValid = true;
+  const handlePrevious = () => {
+    if (!isFirstQuestion) {
+      setCurrentQuestionIndex((i) => i - 1);
+      setSubmitError('');
+      setFieldErrors({});
+    }
+  };
 
-    for (const question of questions) {
-      const answer = answers[question.id]?.trim();
-      if (!answer) {
-        errors[question.id] = 'Esta questão é obrigatória';
-        isValid = false;
-      }
+  /**
+   * Handle moving to next question or submitting
+   */
+  const handleNextOrSubmit = async () => {
+    if (!validateCurrentQuestion()) {
+      return;
     }
 
-    setFieldErrors(errors);
-    return isValid;
+    if (isLastQuestion) {
+      // Validate all questions before submission
+      const allAnswered = questions.every((q) => answers[q.id]?.trim());
+      if (!allAnswered) {
+        // Find first unanswered question and show error
+        for (const q of questions) {
+          if (!answers[q.id]?.trim()) {
+            setFieldErrors((prev) => ({
+              ...prev,
+              [q.id]: 'Esta questão é obrigatória',
+            }));
+          }
+        }
+        return;
+      }
+      // Submit form
+      await handleSubmit();
+    } else {
+      // Move to next question
+      setCurrentQuestionIndex((i) => i + 1);
+      setSubmitError('');
+      setFieldErrors({});
+    }
   };
+
 
   /**
    * Handle answer change for a question
@@ -105,15 +128,8 @@ export function ExtractionForm({
   /**
    * Submit answers to API
    */
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setSubmitError('');
-
-    // Validate form
-    if (!validateForm()) {
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -189,30 +205,26 @@ export function ExtractionForm({
             Revise as questões extraídas do PDF e forneça as respostas corretas antes de adaptar.
           </p>
 
-          {/* Review Section with Confirm All Button */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="text-base font-display font-semibold text-foreground">
-                Revisar Questões Extraídas
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {confirmedCount} de {totalCount} confirmadas
+          {/* Progress Indicator */}
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">
+                Pergunta {currentQuestionIndex + 1} de {totalCount}
               </p>
+              <div className="mt-2 w-full bg-surface-container rounded-full h-2">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${((currentQuestionIndex + 1) / totalCount) * 100}%`,
+                  }}
+                  aria-hidden="true"
+                />
+              </div>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={confirmAll}
-              disabled={isFullyConfirmed}
-              className="rounded-lg"
-            >
-              Confirmar todas
-            </Button>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="space-y-8">
           {/* Submit Error Alert */}
           {submitError && (
             <div
@@ -228,153 +240,117 @@ export function ExtractionForm({
             </div>
           )}
 
-          {/* Questions */}
-          <div className="space-y-6">
-            {questions.map((question, index) => {
-              const isConfirmed = confirmedIds.has(question.id);
-              return (
-                <div
-                  key={question.id}
-                  className="rounded-xl bg-card p-8 space-y-6 transition-all"
-                >
-                  {/* Question Header */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-2">
-                      <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-                        Questão {index + 1} de {totalCount}
-                      </p>
-                      <h2 className="text-lg font-semibold text-foreground leading-relaxed">
-                        {question.question_text}
-                      </h2>
-                    </div>
-                    {isConfirmed && (
-                      <div className="flex-shrink-0 flex items-center gap-1.5 text-primary font-medium text-sm">
-                        <Check className="h-4 w-4" aria-hidden="true" />
-                        Confirmada
-                      </div>
-                    )}
-                  </div>
+          {/* Current Question */}
+          <div className="rounded-xl bg-card p-8 space-y-6">
+            {/* Question Header */}
+            <div className="space-y-2">
+              <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                Questão {currentQuestionIndex + 1} de {totalCount}
+              </p>
+              <h2 className="text-lg font-semibold text-foreground leading-relaxed">
+                {currentQuestion.question_text}
+              </h2>
+            </div>
 
-                  {/* Input Section */}
-                  <div className="space-y-4 border-t border-surface-container pt-6">
-                    {question.question_type === 'objective' ? (
-                      // Objective question - render inline
-                      <div className="space-y-3">
-                        <label className="block text-sm font-medium text-foreground">
-                          Selecione sua resposta <span className="text-destructive">*</span>
-                        </label>
-                        <div className="space-y-2">
-                          {question.alternatives &&
-                            Object.entries(question.alternatives).map(
-                              ([key, text]) => (
-                                <div
-                                  key={key}
-                                  className="flex items-center space-x-3 p-3 rounded-lg hover:bg-surface-container transition-colors"
-                                >
-                                  <input
-                                    type="radio"
-                                    id={`alternative-${question.id}-${key}`}
-                                    name={`question-${question.id}`}
-                                    value={key}
-                                    checked={answers[question.id] === key}
-                                    onChange={(e) =>
-                                      handleAnswerChange(
-                                        question.id,
-                                        e.target.value
-                                      )
-                                    }
-                                    className="w-4 h-4"
-                                    aria-label={`Alternativa ${key.toUpperCase()}: ${text}`}
-                                  />
-                                  <label
-                                    htmlFor={`alternative-${question.id}-${key}`}
-                                    className="flex-1 cursor-pointer text-sm leading-relaxed"
-                                  >
-                                    <span className="font-medium text-foreground">
-                                      {key.toUpperCase()}.
-                                    </span>{' '}
-                                    <span className="text-foreground">{text}</span>
-                                  </label>
-                                </div>
-                              )
-                            )}
-                        </div>
-                      </div>
-                    ) : (
-                      // Essay question
-                      <div className="space-y-3">
-                        <label
-                          htmlFor={`question-${question.id}`}
-                          className="block text-sm font-medium text-foreground"
-                        >
-                          Sua resposta <span className="text-destructive">*</span>
-                        </label>
-                        <textarea
-                          id={`question-${question.id}`}
-                          placeholder="Digite sua resposta aqui..."
-                          value={answers[question.id] || ''}
-                          onChange={(e) =>
-                            handleAnswerChange(question.id, e.target.value)
-                          }
-                          className="w-full min-h-32 resize-none p-3 bg-surface-container-low rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary text-foreground placeholder:text-muted-foreground"
-                          aria-invalid={!!fieldErrors[question.id]}
-                          aria-describedby={
-                            fieldErrors[question.id]
-                              ? `error-${question.id}`
-                              : undefined
-                          }
-                        />
-                      </div>
-                    )}
-
-                    {/* Error Message */}
-                    {fieldErrors[question.id] && (
-                      <div
-                        id={`error-${question.id}`}
-                        className="text-sm text-destructive flex items-center gap-2"
-                        role="alert"
-                      >
-                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                        {fieldErrors[question.id]}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Confirmation Button */}
-                  <div className="flex justify-end pt-2">
-                    <Button
-                      type="button"
-                      variant={isConfirmed ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => toggleConfirmation(question.id)}
-                    >
-                      {isConfirmed ? (
-                        <>
-                          <Check className="h-3.5 w-3.5 mr-1.5" />
-                          Confirmada
-                        </>
-                      ) : (
-                        'Confirmar'
+            {/* Input Section */}
+            <div className="space-y-4 border-t border-surface-container pt-6">
+              {currentQuestion.question_type === 'objective' ? (
+                // Objective question
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-foreground">
+                    Selecione sua resposta <span className="text-destructive">*</span>
+                  </label>
+                  <div className="space-y-2">
+                    {currentQuestion.alternatives &&
+                      Object.entries(currentQuestion.alternatives).map(
+                        ([key, text]) => (
+                          <div
+                            key={key}
+                            className="flex items-center space-x-3 p-3 rounded-lg hover:bg-surface-container transition-colors"
+                          >
+                            <input
+                              type="radio"
+                              id={`alternative-${currentQuestion.id}-${key}`}
+                              name={`question-${currentQuestion.id}`}
+                              value={key}
+                              checked={answers[currentQuestion.id] === key}
+                              onChange={(e) =>
+                                handleAnswerChange(
+                                  currentQuestion.id,
+                                  e.target.value
+                                )
+                              }
+                              className="w-4 h-4"
+                              aria-label={`Alternativa ${key.toUpperCase()}: ${text}`}
+                            />
+                            <label
+                              htmlFor={`alternative-${currentQuestion.id}-${key}`}
+                              className="flex-1 cursor-pointer text-sm leading-relaxed"
+                            >
+                              <span className="font-medium text-foreground">
+                                {key.toUpperCase()}.
+                              </span>{' '}
+                              <span className="text-foreground">{text}</span>
+                            </label>
+                          </div>
+                        )
                       )}
-                    </Button>
                   </div>
                 </div>
-              );
-            })}
+              ) : (
+                // Essay question
+                <div className="space-y-3">
+                  <label
+                    htmlFor={`question-${currentQuestion.id}`}
+                    className="block text-sm font-medium text-foreground"
+                  >
+                    Sua resposta <span className="text-destructive">*</span>
+                  </label>
+                  <textarea
+                    id={`question-${currentQuestion.id}`}
+                    placeholder="Digite sua resposta aqui..."
+                    value={answers[currentQuestion.id] || ''}
+                    onChange={(e) =>
+                      handleAnswerChange(currentQuestion.id, e.target.value)
+                    }
+                    className="w-full min-h-32 resize-none p-3 bg-surface-container-low rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary text-foreground placeholder:text-muted-foreground"
+                    aria-invalid={!!fieldErrors[currentQuestion.id]}
+                    aria-describedby={
+                      fieldErrors[currentQuestion.id]
+                        ? `error-${currentQuestion.id}`
+                        : undefined
+                    }
+                  />
+                </div>
+              )}
+
+              {/* Error Message */}
+              {fieldErrors[currentQuestion.id] && (
+                <div
+                  id={`error-${currentQuestion.id}`}
+                  className="text-sm text-destructive flex items-center gap-2"
+                  role="alert"
+                >
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  {fieldErrors[currentQuestion.id]}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Actions Footer */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-surface-container justify-end">
-              <Button
-                type="submit"
-                disabled={isLoading || !isFullyConfirmed}
-                className="rounded-xl font-display font-bold px-8 gap-2 flex-1 sm:flex-none"
-              >
-                {isLoading && (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                )}
-                {isLoading ? 'Processando...' : 'Próximo'}
-              </Button>
+          {/* Navigation Footer */}
+          <div className="flex gap-3 pt-4 border-t border-surface-container justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={isLoading || isFirstQuestion}
+              className="rounded-xl gap-2"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              Anterior
+            </Button>
+            <div className="flex gap-3">
               <Button
                 type="button"
                 variant="outline"
@@ -384,8 +360,32 @@ export function ExtractionForm({
               >
                 Cancelar
               </Button>
+              <Button
+                type="button"
+                onClick={handleNextOrSubmit}
+                disabled={isLoading}
+                className="rounded-xl font-display font-bold px-8 gap-2"
+              >
+                {isLoading && (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                )}
+                {isLoading ? (
+                  'Processando...'
+                ) : isLastQuestion ? (
+                  <>
+                    Finalizar
+                    <Check className="h-4 w-4" aria-hidden="true" />
+                  </>
+                ) : (
+                  <>
+                    Próximo
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

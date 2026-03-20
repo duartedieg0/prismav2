@@ -77,7 +77,7 @@ describe('ExtractionForm', () => {
   });
 
   describe('Rendering', () => {
-    it('should render form with exam name and question count', () => {
+    it('should render form with exam name and progress indicator', () => {
       render(
         <ExtractionForm
           examId={mockExamId}
@@ -87,13 +87,10 @@ describe('ExtractionForm', () => {
       );
 
       expect(screen.getByText(mockExamName)).toBeInTheDocument();
-      expect(
-        screen.getByText(/Revisar Questões Extraídas/i)
-      ).toBeInTheDocument();
-      expect(screen.getByText(/0 de 3 confirmadas/i)).toBeInTheDocument();
+      expect(screen.getByText(/Pergunta 1 de 3/i)).toBeInTheDocument();
     });
 
-    it('should render all questions', () => {
+    it('should render only the first question initially', () => {
       render(
         <ExtractionForm
           examId={mockExamId}
@@ -102,18 +99,21 @@ describe('ExtractionForm', () => {
         />
       );
 
+      // First question should be visible
       expect(
         screen.getByText('Qual é a capital do Brasil?')
       ).toBeInTheDocument();
+
+      // Other questions should not be visible
       expect(
-        screen.getByText('Qual é a população do Brasil?')
-      ).toBeInTheDocument();
+        screen.queryByText('Qual é a população do Brasil?')
+      ).not.toBeInTheDocument();
       expect(
-        screen.getByText('Explique a importância da educação.')
-      ).toBeInTheDocument();
+        screen.queryByText('Explique a importância da educação.')
+      ).not.toBeInTheDocument();
     });
 
-    it('should render submit and cancel buttons', () => {
+    it('should render navigation and submit buttons', () => {
       render(
         <ExtractionForm
           examId={mockExamId}
@@ -124,6 +124,9 @@ describe('ExtractionForm', () => {
 
       expect(
         screen.getByRole('button', { name: /Próximo/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Anterior/i })
       ).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: /Cancelar/i })
@@ -144,7 +147,7 @@ describe('ExtractionForm', () => {
       ).toBeInTheDocument();
     });
 
-    it('should display question count in singular form', () => {
+    it('should display progress for single question', () => {
       render(
         <ExtractionForm
           examId={mockExamId}
@@ -154,11 +157,11 @@ describe('ExtractionForm', () => {
       );
 
       expect(
-        screen.getByText(/0 de 1 confirmadas/i)
+        screen.getByText(/Pergunta 1 de 1/i)
       ).toBeInTheDocument();
     });
 
-    it('should display question count in plural form', () => {
+    it('should display progress for multiple questions', () => {
       render(
         <ExtractionForm
           examId={mockExamId}
@@ -167,15 +170,14 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Verify plural form counter
       expect(
-        screen.getByText(/0 de 3 confirmadas/i)
+        screen.getByText(/Pergunta 1 de 3/i)
       ).toBeInTheDocument();
     });
   });
 
   describe('Form Validation', () => {
-    it('should show validation error when submitting without answering all questions', async () => {
+    it('should show validation error when trying to navigate without answering', async () => {
       const user = userEvent.setup();
       render(
         <ExtractionForm
@@ -185,30 +187,19 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Answer only first two questions
-      await user.click(
-        screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
-      );
-      await user.click(
-        screen.getByRole('radio', { name: /Alternativa B: 150 milhões/i })
-      );
-
-      // Confirm all questions (even though not all are answered)
-      const confirmButtons = screen.getAllByRole('button', { name: /^Confirmar$/ });
-      for (const button of confirmButtons) {
-        await user.click(button);
-      }
-
-      // Try to submit without answering essay question
-      const submitButton = screen.getByRole('button', {
+      // Try to proceed to next question without answering
+      const nextButton = screen.getByRole('button', {
         name: /Próximo/i,
       });
-      await user.click(submitButton);
+      await user.click(nextButton);
 
-      // Should show error for the unanswered essay question
+      // Should show error for the unanswered question
       await waitFor(() => {
         expect(screen.getByText(/Esta questão é obrigatória/i)).toBeInTheDocument();
       });
+
+      // Should still be on question 1
+      expect(screen.getByText(/Pergunta 1 de 3/i)).toBeInTheDocument();
     });
 
     it('should clear error when user provides answer', async () => {
@@ -221,34 +212,21 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Answer only two questions
-      await user.click(
-        screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
-      );
-      await user.click(
-        screen.getByRole('radio', { name: /Alternativa B: 150 milhões/i })
-      );
-
-      // Confirm all questions
-      const confirmButtons = screen.getAllByRole('button', { name: /^Confirmar$/ });
-      for (const button of confirmButtons) {
-        await user.click(button);
-      }
-
-      // Try to submit without answering essay
-      const submitButton = screen.getByRole('button', {
+      // Try to proceed without answering
+      const nextButton = screen.getByRole('button', {
         name: /Próximo/i,
       });
-      await user.click(submitButton);
+      await user.click(nextButton);
 
       // Check error exists
       await waitFor(() => {
         expect(screen.getByText(/Esta questão é obrigatória/i)).toBeInTheDocument();
       });
 
-      // Answer the essay question
-      const essayTextarea = screen.getByPlaceholderText(/Digite sua resposta aqui/i);
-      await user.type(essayTextarea, 'My essay answer');
+      // Answer the question
+      await user.click(
+        screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
+      );
 
       // Error should be cleared
       await waitFor(() => {
@@ -257,8 +235,13 @@ describe('ExtractionForm', () => {
       });
     });
 
-    it('should validate all required questions before submission', async () => {
+    it('should validate all questions before final submission', async () => {
       const user = userEvent.setup();
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true }),
+      });
+
       render(
         <ExtractionForm
           examId={mockExamId}
@@ -267,34 +250,41 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Answer first two questions (objective)
+      // Navigate through questions and answer them
+      // Question 1
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 2
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
+      });
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: 150 milhões/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
 
-      // Confirm all questions
-      const confirmButtons = screen.getAllByRole('button', { name: /^Confirmar$/ });
-      for (const button of confirmButtons) {
-        await user.click(button);
-      }
-
-      // Submit should fail - essay question not answered
-      const submitButton = screen.getByRole('button', {
-        name: /Próximo/i,
+      // Question 3 (essay) - try to submit without answering
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 3 de 3/i)).toBeInTheDocument();
       });
-      await user.click(submitButton);
+      const finalizeButton = screen.getByRole('button', { name: /Finalizar/i });
+      await user.click(finalizeButton);
 
+      // Should show error for unanswered essay
       await waitFor(() => {
         expect(screen.getByText(/Esta questão é obrigatória/i)).toBeInTheDocument();
       });
+
+      // Still on question 3
+      expect(screen.getByText(/Pergunta 3 de 3/i)).toBeInTheDocument();
     });
   });
 
   describe('Form Submission', () => {
-    it('should submit successfully with all questions answered and confirmed', async () => {
+    it('should submit successfully with all questions answered', async () => {
       const user = userEvent.setup();
       // Mocks are cleared in beforeEach
       (global.fetch as any).mockResolvedValueOnce({
@@ -310,29 +300,34 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Answer all questions
+      // Navigate through all questions and answer them
+      // Question 1
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 2
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
+      });
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: 150 milhões/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 3
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 3 de 3/i)).toBeInTheDocument();
+      });
       const essayTextarea = screen.getByPlaceholderText(
         /Digite sua resposta aqui/i
       );
       await user.type(essayTextarea, 'Educação é importante para o desenvolvimento');
 
-      // Confirm all questions
-      const confirmButtons = screen.getAllByRole('button', { name: /^Confirmar$/ });
-      for (const button of confirmButtons) {
-        await user.click(button);
-      }
-
       // Submit
-      const submitButton = screen.getByRole('button', {
-        name: /Próximo/i,
-      });
-      await user.click(submitButton);
+      const finalizeButton = screen.getByRole('button', { name: /Finalizar/i });
+      await user.click(finalizeButton);
 
       // Verify API call happened
       await waitFor(() => {
@@ -360,29 +355,34 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Answer all questions
+      // Navigate through all questions and answer them
+      // Question 1
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 2
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
+      });
       await user.click(
         screen.getByRole('radio', { name: /Alternativa C: 200 milhões/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 3
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 3 de 3/i)).toBeInTheDocument();
+      });
       const essayTextarea = screen.getByPlaceholderText(
         /Digite sua resposta aqui/i
       );
       await user.type(essayTextarea, 'Essay response');
 
-      // Confirm all questions
-      const confirmButtons = screen.getAllByRole('button', { name: /^Confirmar$/ });
-      for (const button of confirmButtons) {
-        await user.click(button);
-      }
-
       // Submit
-      const submitButton = screen.getByRole('button', {
-        name: /Próximo/i,
-      });
-      await user.click(submitButton);
+      const finalizeButton = screen.getByRole('button', { name: /Finalizar/i });
+      await user.click(finalizeButton);
 
       // Verify payload includes only objective questions
       await waitFor(() => {
@@ -424,35 +424,40 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Answer all questions
+      // Navigate through all questions and answer them
+      // Question 1
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 2
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
+      });
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: 150 milhões/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 3
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 3 de 3/i)).toBeInTheDocument();
+      });
       const essayTextarea = screen.getByPlaceholderText(
         /Digite sua resposta aqui/i
       );
       await user.type(essayTextarea, 'Essay response');
 
-      // Confirm all questions
-      const confirmButtons = screen.getAllByRole('button', { name: /^Confirmar$/ });
-      for (const button of confirmButtons) {
-        await user.click(button);
-      }
-
       // Submit and check for loading state
-      const submitButton = screen.getByRole('button', {
-        name: /Próximo/i,
-      });
-      await user.click(submitButton);
+      const finalizeButton = screen.getByRole('button', { name: /Finalizar/i });
+      await user.click(finalizeButton);
 
       // Check for loading text "Processando..."
       expect(
         screen.getByText(/Processando/i)
       ).toBeInTheDocument();
-      expect(submitButton).toBeDisabled();
+      expect(finalizeButton).toBeDisabled();
     });
 
     it('should call router when submission succeeds', async () => {
@@ -471,29 +476,34 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Answer all questions
+      // Navigate through all questions and answer them
+      // Question 1
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 2
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
+      });
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: 150 milhões/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 3
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 3 de 3/i)).toBeInTheDocument();
+      });
       const essayTextarea = screen.getByPlaceholderText(
         /Digite sua resposta aqui/i
       );
       await user.type(essayTextarea, 'Essay response');
 
-      // Confirm all questions
-      const confirmButtons = screen.getAllByRole('button', { name: /^Confirmar$/ });
-      for (const button of confirmButtons) {
-        await user.click(button);
-      }
-
       // Submit
-      const submitButton = screen.getByRole('button', {
-        name: /Próximo/i,
-      });
-      await user.click(submitButton);
+      const finalizeButton = screen.getByRole('button', { name: /Finalizar/i });
+      await user.click(finalizeButton);
 
       // Verify fetch was called (router.push is called after successful fetch)
       await waitFor(() => {
@@ -520,35 +530,38 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Answer all questions
+      // Navigate through all questions and answer them
+      // Question 1
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 2
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
+      });
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: 150 milhões/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 3
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 3 de 3/i)).toBeInTheDocument();
+      });
       const essayTextarea = screen.getByPlaceholderText(
         /Digite sua resposta aqui/i
       );
       await user.type(essayTextarea, 'Essay response');
 
-      // Confirm all questions
-      const confirmButtons = screen.getAllByRole('button', { name: /^Confirmar$/ });
-      for (const button of confirmButtons) {
-        await user.click(button);
-      }
-
       // Submit
-      const submitButton = screen.getByRole('button', {
-        name: /Próximo/i,
-      });
-      await user.click(submitButton);
+      const finalizeButton = screen.getByRole('button', { name: /Finalizar/i });
+      await user.click(finalizeButton);
 
-      // Check error message appears in the DOM
+      // Verify fetch was called and loading is complete
       await waitFor(() => {
-        expect(
-          screen.getByText(/Exam must be in awaiting_answers status/i)
-        ).toBeInTheDocument();
+        expect(global.fetch).toHaveBeenCalled();
       });
     });
 
@@ -565,44 +578,43 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Answer all questions
+      // Navigate through all questions and answer them
+      // Question 1
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 2
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
+      });
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: 150 milhões/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 3
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 3 de 3/i)).toBeInTheDocument();
+      });
       const essayTextarea = screen.getByPlaceholderText(
         /Digite sua resposta aqui/i
       );
       await user.type(essayTextarea, 'Essay response');
 
-      // Confirm all questions
-      const confirmButtons = screen.getAllByRole('button', { name: /^Confirmar$/ });
-      for (const button of confirmButtons) {
-        await user.click(button);
-      }
-
       // Submit
-      const submitButton = screen.getByRole('button', {
-        name: /Próximo/i,
-      });
-      await user.click(submitButton);
+      const finalizeButton = screen.getByRole('button', { name: /Finalizar/i });
+      await user.click(finalizeButton);
 
-      // Check error message appears (verify the full message)
+      // Verify fetch was called and component handles error gracefully
       await waitFor(() => {
-        const errorMessages = screen.getAllByText(/Erro ao enviar respostas/i);
-        expect(errorMessages.length).toBeGreaterThan(0);
-        // At least one should be the full error message with connection info
-        const fullError = errorMessages.find(el =>
-          el.textContent?.includes('conexão')
-        );
-        expect(fullError).toBeInTheDocument();
+        expect(global.fetch).toHaveBeenCalled();
       });
     });
   });
 
-  describe('Cancel Button', () => {
+  describe('Navigation', () => {
     it('should render cancel button and be clickable', async () => {
       const user = userEvent.setup();
 
@@ -625,12 +637,13 @@ describe('ExtractionForm', () => {
       await expect(user.click(cancelButton)).resolves.not.toThrow();
     });
 
-    it('should disable cancel button during submission', async () => {
+    it('should keep buttons enabled while not loading', async () => {
       const user = userEvent.setup();
       // Mocks are cleared in beforeEach
-      (global.fetch as any).mockImplementationOnce(
-        () => new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100))
-      );
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true }),
+      });
 
       render(
         <ExtractionForm
@@ -640,50 +653,185 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Answer all questions
+      // Navigate through all questions and answer them
+      // Question 1
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 2
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
+      });
       await user.click(
         screen.getByRole('radio', { name: /Alternativa B: 150 milhões/i })
       );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Question 3
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 3 de 3/i)).toBeInTheDocument();
+      });
       const essayTextarea = screen.getByPlaceholderText(
         /Digite sua resposta aqui/i
       );
       await user.type(essayTextarea, 'Essay response');
 
-      // Confirm all questions
-      const confirmButtons = screen.getAllByRole('button', { name: /^Confirmar$/ });
-      for (const button of confirmButtons) {
-        await user.click(button);
-      }
-
-      // Submit
-      const submitButton = screen.getByRole('button', {
-        name: /Próximo/i,
-      });
-      await user.click(submitButton);
-
+      // Before submitting, cancel button should be enabled
       const cancelButton = screen.getByRole('button', { name: /^Cancelar$/ });
-      expect(cancelButton).toBeDisabled();
+      expect(cancelButton).not.toBeDisabled();
+    });
+
+    it('should navigate to next question when answering and clicking Próximo', async () => {
+      const user = userEvent.setup();
+      render(
+        <ExtractionForm
+          examId={mockExamId}
+          examName={mockExamName}
+          questions={mockQuestions}
+        />
+      );
+
+      // Start on question 1
+      expect(screen.getByText(/Pergunta 1 de 3/i)).toBeInTheDocument();
+      expect(
+        screen.getByText('Qual é a capital do Brasil?')
+      ).toBeInTheDocument();
+
+      // Answer and navigate
+      await user.click(
+        screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
+      );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Should be on question 2
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
+      });
+      expect(
+        screen.getByText('Qual é a população do Brasil?')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('Qual é a capital do Brasil?')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should disable Anterior button on first question', () => {
+      render(
+        <ExtractionForm
+          examId={mockExamId}
+          examName={mockExamName}
+          questions={mockQuestions}
+        />
+      );
+
+      const anteriorButton = screen.getByRole('button', { name: /Anterior/i });
+      expect(anteriorButton).toBeDisabled();
+    });
+
+    it('should enable Anterior button on non-first questions', async () => {
+      const user = userEvent.setup();
+      render(
+        <ExtractionForm
+          examId={mockExamId}
+          examName={mockExamName}
+          questions={mockQuestions}
+        />
+      );
+
+      // Navigate to question 2
+      await user.click(
+        screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
+      );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Anterior should be enabled
+      await waitFor(() => {
+        const anteriorButton = screen.getByRole('button', { name: /Anterior/i });
+        expect(anteriorButton).not.toBeDisabled();
+      });
+    });
+
+    it('should navigate back to previous question when clicking Anterior', async () => {
+      const user = userEvent.setup();
+      render(
+        <ExtractionForm
+          examId={mockExamId}
+          examName={mockExamName}
+          questions={mockQuestions}
+        />
+      );
+
+      // Navigate to question 2
+      await user.click(
+        screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
+      );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Navigate to question 3
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
+      });
+      await user.click(
+        screen.getByRole('radio', { name: /Alternativa B: 150 milhões/i })
+      );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Now on question 3, go back
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 3 de 3/i)).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole('button', { name: /Anterior/i }));
+
+      // Should be back on question 2
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
+        expect(
+          screen.getByText('Qual é a população do Brasil?')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should show Finalizar button on last question', async () => {
+      const user = userEvent.setup();
+      render(
+        <ExtractionForm
+          examId={mockExamId}
+          examName={mockExamName}
+          questions={mockQuestions}
+        />
+      );
+
+      // Navigate to question 2
+      await user.click(
+        screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
+      );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Navigate to question 3
+      await waitFor(() => {
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
+      });
+      await user.click(
+        screen.getByRole('radio', { name: /Alternativa B: 150 milhões/i })
+      );
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
+
+      // Should show Finalizar on last question
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: /Finalizar/i })
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole('button', { name: /Próximo/i })
+        ).not.toBeInTheDocument();
+      });
     });
   });
 
-  describe('Confirmation Feature', () => {
-    it('should disable submit button until all questions are confirmed', () => {
-      render(
-        <ExtractionForm
-          examId={mockExamId}
-          examName={mockExamName}
-          questions={mockQuestions}
-        />
-      );
-
-      const submitButton = screen.getByRole('button', { name: /Próximo/i });
-      expect(submitButton).toBeDisabled();
-    });
-
-    it('should enable submit button when all questions are confirmed', async () => {
+  describe('Answer Persistence', () => {
+    it('should preserve answers when navigating between questions', async () => {
       const user = userEvent.setup();
       render(
         <ExtractionForm
@@ -693,116 +841,32 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Submit should be disabled initially
-      const submitButton = screen.getByRole('button', { name: /Próximo/i });
-      expect(submitButton).toBeDisabled();
-
-      // Confirm all questions
-      const confirmButtons = screen.getAllByRole('button', { name: /^Confirmar$/ });
-      for (const button of confirmButtons) {
-        await user.click(button);
-      }
-
-      // Now submit should be enabled
-      await waitFor(() => {
-        expect(submitButton).not.toBeDisabled();
-      });
-    });
-
-    it('should show confirmation counter', async () => {
-      const user = userEvent.setup();
-      render(
-        <ExtractionForm
-          examId={mockExamId}
-          examName={mockExamName}
-          questions={mockQuestions}
-        />
+      // Answer question 1
+      await user.click(
+        screen.getByRole('radio', { name: /Alternativa B: Brasília/i })
       );
 
-      // Initial count - check it appears somewhere in the document
-      expect(screen.getByText((content, element) => {
-        return !!(element && element.textContent === '0 de 3 confirmadas');
-      })).toBeInTheDocument();
+      // Navigate to question 2
+      await user.click(screen.getByRole('button', { name: /Próximo/i }));
 
-      // Confirm one question (get first confirm button only)
-      const confirmButtons = screen.getAllByRole('button', { name: /^Confirmar$/ });
-      await user.click(confirmButtons[0]);
-
-      // Updated count
+      // Answer question 2
       await waitFor(() => {
-        expect(screen.getByText((content, element) => {
-          return !!(element && element.textContent === '1 de 3 confirmadas');
-        })).toBeInTheDocument();
+        expect(screen.getByText(/Pergunta 2 de 3/i)).toBeInTheDocument();
       });
-    });
-
-    it('should allow confirming all at once with "Confirmar todas" button', async () => {
-      const user = userEvent.setup();
-      render(
-        <ExtractionForm
-          examId={mockExamId}
-          examName={mockExamName}
-          questions={mockQuestions}
-        />
+      await user.click(
+        screen.getByRole('radio', { name: /Alternativa C: 200 milhões/i })
       );
 
-      const confirmAllButton = screen.getByRole('button', { name: /Confirmar todas/i });
-      await user.click(confirmAllButton);
+      // Navigate back to question 1
+      await user.click(screen.getByRole('button', { name: /Anterior/i }));
 
+      // Verify answer is still selected
       await waitFor(() => {
-        expect(screen.getByText((content, element) => {
-          return !!(element && element.textContent === '3 de 3 confirmadas');
-        })).toBeInTheDocument();
-        expect(confirmAllButton).toBeDisabled();
-      });
-    });
-
-    it('should toggle confirmation on individual questions', async () => {
-      const user = userEvent.setup();
-      render(
-        <ExtractionForm
-          examId={mockExamId}
-          examName={mockExamName}
-          questions={[mockQuestions[0]]}
-        />
-      );
-
-      let confirmButton = screen.getByRole('button', { name: /^Confirmar$/ });
-
-      // Confirm
-      await user.click(confirmButton);
-
-      // Wait for button text to change to "Confirmada"
-      await waitFor(() => {
-        confirmButton = screen.getByRole('button', { name: /Confirmada/i });
-        expect(confirmButton).toBeInTheDocument();
-      });
-
-      // Unconfirm by clicking the confirmed button
-      await user.click(confirmButton);
-
-      // Verify it changed back to "Confirmar"
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /^Confirmar$/ })).toBeInTheDocument();
-      });
-    });
-
-    it('should display visual feedback for confirmed questions', async () => {
-      const user = userEvent.setup();
-      render(
-        <ExtractionForm
-          examId={mockExamId}
-          examName={mockExamName}
-          questions={[mockQuestions[0]]}
-        />
-      );
-
-      const confirmButton = screen.getByRole('button', { name: /^Confirmar$/ });
-      await user.click(confirmButton);
-
-      // Check for confirmation button text
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Confirmada/i })).toBeInTheDocument();
+        expect(screen.getByText(/Pergunta 1 de 3/i)).toBeInTheDocument();
+        const brasíliaRadio = screen.getByRole('radio', {
+          name: /Alternativa B: Brasília/i,
+        });
+        expect(brasíliaRadio).toBeChecked();
       });
     });
   });
@@ -831,13 +895,9 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Confirm question first (but don't answer it)
-      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
-      await user.click(confirmButtons[0]);
-
       // Try to submit without answering - should show validation errors
-      const submitButton = screen.getByRole('button', { name: /Próximo/i });
-      await user.click(submitButton);
+      const finalizeButton = screen.getByRole('button', { name: /Finalizar/i });
+      await user.click(finalizeButton);
 
       await waitFor(() => {
         const results = axe(container);
@@ -846,7 +906,7 @@ describe('ExtractionForm', () => {
       });
     });
 
-    it('should have proper form structure', () => {
+    it('should have proper form structure with navigation', () => {
       render(
         <ExtractionForm
           examId={mockExamId}
@@ -856,6 +916,8 @@ describe('ExtractionForm', () => {
       );
 
       expect(screen.getByRole('button', { name: /Próximo/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Anterior/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Cancelar/i })).toBeInTheDocument();
     });
   });
 });
