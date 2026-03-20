@@ -22,11 +22,20 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Plus, ClipboardList } from 'lucide-react';
+import { Plus, ClipboardList, MoreVertical } from 'lucide-react';
 import type { ExamStatus } from '@/lib/types/extraction';
+
+interface Subject {
+  id: string;
+  name: string;
+}
+
+interface GradeLevel {
+  id: string;
+  name: string;
+}
 
 interface Exam {
   id: string;
@@ -34,10 +43,22 @@ interface Exam {
   status: ExamStatus;
   created_at: string;
   updated_at: string;
+  subject?: Subject | null;
+  grade_level?: GradeLevel | null;
+}
+
+interface RawExamResponse {
+  id: string;
+  title: string;
+  status: ExamStatus;
+  created_at: string;
+  updated_at: string;
+  subject: Subject[] | Subject | null;
+  grade_level: GradeLevel[] | GradeLevel | null;
 }
 
 /**
- * Fetch all exams for the current authenticated user
+ * Fetch all exams for the current authenticated user with related data
  */
 async function fetchUserExams(): Promise<Exam[]> {
   const supabase = await createClient();
@@ -50,17 +71,36 @@ async function fetchUserExams(): Promise<Exam[]> {
     return [];
   }
 
-  const { data: exams, error } = await supabase
+  const { data: rawExams, error } = await supabase
     .from('exams')
-    .select('id, title, status, created_at, updated_at')
+    .select(`
+      id,
+      title,
+      status,
+      created_at,
+      updated_at,
+      subject:subject_id (id, name),
+      grade_level:grade_level_id (id, name)
+    `)
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false });
 
-  if (error || !exams) {
+  if (error || !rawExams) {
     return [];
   }
 
-  return exams as Exam[];
+  // Transform Supabase response (arrays) into our Exam type (single objects)
+  const exams = rawExams.map((exam: RawExamResponse) => ({
+    id: exam.id,
+    title: exam.title,
+    status: exam.status,
+    created_at: exam.created_at,
+    updated_at: exam.updated_at,
+    subject: Array.isArray(exam.subject) ? exam.subject[0] : exam.subject,
+    grade_level: Array.isArray(exam.grade_level) ? exam.grade_level[0] : exam.grade_level,
+  })) as Exam[];
+
+  return exams;
 }
 
 /**
@@ -167,94 +207,205 @@ function getActionHref(exam: Exam): string {
 export default async function DashboardPage() {
   const exams = await fetchUserExams();
 
-  return (
-    <main className="min-h-screen bg-background py-8">
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Minhas Provas</h1>
-          <Link href="/exams/new">
-            <Button variant="accent" className="gap-2 w-full sm:w-auto">
-              <Plus className="w-4 h-4" />
-              Nova Prova
-            </Button>
-          </Link>
-        </div>
+  // Calculate statistics
+  const stats = {
+    total: exams.length,
+    ready: exams.filter(e => e.status === 'ready').length,
+    processing: exams.filter(e => ['uploading', 'processing', 'awaiting_answers'].includes(e.status)).length,
+    draft: exams.filter(e => e.status === 'draft').length,
+  };
 
-        {/* Empty State */}
-        {exams.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-4 text-center py-12">
-            <div className="rounded-full bg-muted p-4">
-              <ClipboardList className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">
-                Nenhuma prova ainda
-              </h2>
-              <p className="text-sm text-muted-foreground mt-2">
-                Crie sua primeira prova para começar a adaptar com IA
+  return (
+    <main className="min-h-screen bg-background">
+      {/* Header Section — Editorial feel with deep typography */}
+      <div className="bg-background pt-12 pb-8 px-4 sm:px-6">
+        <div className="w-full max-w-6xl mx-auto">
+          {/* Greeting + CTA */}
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 mb-12">
+            <div className="flex-1">
+              <h1 className="font-display text-4xl sm:text-5xl font-extrabold text-foreground mb-2">
+                Minhas Provas
+              </h1>
+              <p className="text-base sm:text-lg text-muted-foreground font-sans">
+                Gerencie e adapte suas avaliações escolares.
               </p>
             </div>
-            <Link href="/exams/new" className="mt-4">
-              <Button>Criar Primeira Prova</Button>
+            <Link href="/exams/new" className="flex-shrink-0">
+              <Button variant="default" className="gap-2 bg-tertiary hover:bg-tertiary/90 text-white whitespace-nowrap">
+                <Plus className="w-4 h-4" />
+                Nova Prova
+              </Button>
             </Link>
           </div>
-        ) : (
-          /* Exams Grid */
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {exams.map((exam) => {
-              const statusConfig = getStatusConfig(exam.status);
-              const actionHref = getActionHref(exam);
 
-              return (
-                <Card
-                  key={exam.id}
-                  className="h-full p-6 hover:shadow-md transition-shadow overflow-hidden flex flex-col relative"
-                >
-                  {/* Left border indicator */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${statusConfig.barColor}`} />
+          {/* Statistics Cards — Surface hierarchy, no borders */}
+          {stats.total > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+              {/* Card: Total Exams */}
+              <div className="bg-surface-container-low rounded-lg p-6">
+                <p className="text-xs font-mono text-muted-foreground uppercase mb-2">
+                  Atividade Recente
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-display text-4xl font-extrabold text-foreground">
+                    {stats.total}
+                  </span>
+                  <span className="text-sm text-muted-foreground font-sans">
+                    Provas
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 font-sans">
+                  {stats.total === 1 ? 'Adaptada este mês' : 'Adaptadas este mês'}
+                </p>
+              </div>
 
-                  <div className="flex flex-col h-full gap-4 pl-0">
-                    {/* Title section */}
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-foreground line-clamp-2">
-                        {exam.title}
-                      </h3>
+              {/* Card: Processing */}
+              <div className="bg-surface-container-low rounded-lg p-6">
+                <p className="text-xs font-mono text-muted-foreground uppercase mb-2">
+                  Em Processamento
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-display text-4xl font-extrabold text-accent">
+                    {String(stats.processing).padStart(2, '0')}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 font-sans">
+                  {stats.processing === 1 ? 'Prova em processamento' : 'Provas em processamento'}
+                </p>
+              </div>
+
+              {/* Card: Ready */}
+              <div className="bg-surface-container-low rounded-lg p-6">
+                <p className="text-xs font-mono text-muted-foreground uppercase mb-2">
+                  Prontas para Resultado
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-display text-4xl font-extrabold text-success">
+                    {String(stats.ready).padStart(2, '0')}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 font-sans">
+                  {stats.ready === 1 ? 'Prova pronta' : 'Provas prontas'}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Exams Section */}
+      <div className="bg-background px-4 sm:px-6 py-8">
+        <div className="w-full max-w-6xl mx-auto">
+
+          {/* Empty State */}
+          {exams.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-6 text-center py-16">
+              <div className="rounded-full bg-surface-container-low p-6">
+                <ClipboardList className="w-12 h-12 text-muted-foreground" />
+              </div>
+              <div className="max-w-sm">
+                <h2 className="font-display text-2xl font-bold text-foreground mb-2">
+                  Nenhuma prova ainda
+                </h2>
+                <p className="text-sm text-muted-foreground font-sans leading-relaxed">
+                  Crie sua primeira prova para começar a adaptar com IA
+                </p>
+              </div>
+              <Link href="/exams/new" className="mt-4">
+                <Button className="gap-2 bg-tertiary hover:bg-tertiary/90 text-white">
+                  <Plus className="w-4 h-4" />
+                  Criar Primeira Prova
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            /* Exams Grid — Editorial card layout */
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
+              {exams.map((exam) => {
+                const statusConfig = getStatusConfig(exam.status);
+                const actionHref = getActionHref(exam);
+
+                return (
+                  <div
+                    key={exam.id}
+                    className="relative bg-surface-container-low rounded-lg overflow-hidden hover:bg-opacity-90 transition-colors"
+                  >
+                    {/* Left border indicator — thick, colored */}
+                    <div
+                      className={`absolute left-0 top-0 bottom-0 w-1.5 ${statusConfig.barColor}`}
+                    />
+
+                    {/* Card Content */}
+                    <div className="p-6 pl-6">
+                      <div className="flex flex-col h-full gap-4">
+                        {/* Header: Status badge + Actions menu */}
+                        <div className="flex items-start justify-between gap-4">
+                          <Badge
+                            variant={statusConfig.badgeVariant}
+                            className="flex-shrink-0"
+                          >
+                            {statusConfig.badgeLabel}
+                          </Badge>
+                          {/* Actions Menu — only if not processing */}
+                          {!statusConfig.actionDisabled && (
+                            <button className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
+                              <MoreVertical className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Title section — headline emphasis */}
+                        <div className="flex-1">
+                          <h3 className="font-display text-xl font-bold text-foreground line-clamp-2 leading-tight">
+                            {exam.title}
+                          </h3>
+                        </div>
+
+                        {/* Metadata: Subject, Grade Level */}
+                        <div className="text-sm text-muted-foreground font-sans space-y-1">
+                          {exam.subject && (
+                            <p className="flex items-center gap-2">
+                              <span className="font-mono text-xs uppercase text-muted-foreground">📚</span>
+                              {exam.subject.name}
+                              {exam.grade_level && <span className="text-muted-foreground">·</span>}
+                              {exam.grade_level && <span>{exam.grade_level.name}</span>}
+                            </p>
+                          )}
+                          {!exam.subject && exam.grade_level && (
+                            <p className="flex items-center gap-2">
+                              <span className="font-mono text-xs uppercase text-muted-foreground">📚</span>
+                              {exam.grade_level.name}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Time indicator */}
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {formatRelativeDate(exam.updated_at)}
+                        </p>
+
+                        {/* Action button */}
+                        <Link
+                          href={actionHref}
+                          className="block mt-2"
+                        >
+                          <Button
+                            variant="default"
+                            size="sm"
+                            disabled={statusConfig.actionDisabled}
+                            className="w-full"
+                          >
+                            {statusConfig.actionLabel}
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
-
-                    {/* Metadata: relative time */}
-                    <p className="text-xs text-muted-foreground">
-                      {formatRelativeDate(exam.updated_at)}
-                    </p>
-
-                    {/* Status badge */}
-                    <Badge
-                      variant={statusConfig.badgeVariant}
-                      className="w-fit"
-                    >
-                      {statusConfig.badgeLabel}
-                    </Badge>
-
-                    {/* Action button */}
-                    <Link
-                      href={actionHref}
-                      className="mt-auto"
-                    >
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={statusConfig.actionDisabled}
-                        className="w-full"
-                      >
-                        {statusConfig.actionLabel}
-                      </Button>
-                    </Link>
                   </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );
