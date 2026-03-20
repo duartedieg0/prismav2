@@ -79,8 +79,9 @@ describe('ExtractionForm', () => {
 
       expect(screen.getByText(mockExamName)).toBeInTheDocument();
       expect(
-        screen.getByText(/Responda todas as/i)
+        screen.getByText(/Revisar Questões Extraídas/i)
       ).toBeInTheDocument();
+      expect(screen.getByText(/0 de 3 confirmadas/i)).toBeInTheDocument();
     });
 
     it('should render all questions', () => {
@@ -113,7 +114,7 @@ describe('ExtractionForm', () => {
       );
 
       expect(
-        screen.getByRole('button', { name: /Enviar Respostas/i })
+        screen.getByRole('button', { name: /Próximo/i })
       ).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: /Cancelar/i })
@@ -144,7 +145,7 @@ describe('ExtractionForm', () => {
       );
 
       expect(
-        screen.getByText(/Responda todas as 1 questão abaixo/)
+        screen.getByText(/0 de 1 confirmadas/i)
       ).toBeInTheDocument();
     });
 
@@ -157,9 +158,9 @@ describe('ExtractionForm', () => {
         />
       );
 
-      // Verify plural form
+      // Verify plural form counter
       expect(
-        screen.getByText(/Responda todas as 3 questões abaixo/i)
+        screen.getByText(/0 de 3 confirmadas/i)
       ).toBeInTheDocument();
     });
   });
@@ -175,16 +176,25 @@ describe('ExtractionForm', () => {
         />
       );
 
+      // First confirm all questions
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      for (const button of confirmButtons) {
+        await user.click(button);
+      }
+
+      // Now submit without answering
       const submitButton = screen.getByRole('button', {
-        name: /Enviar Respostas/i,
+        name: /Próximo/i,
       });
       await user.click(submitButton);
 
-      // Should show multiple error messages
-      const errorMessages = await screen.findAllByText(
-        /Esta questão é obrigatória/i
-      );
-      expect(errorMessages.length).toBeGreaterThan(0);
+      // Should show multiple error messages - use flexible matcher
+      await waitFor(() => {
+        const errorText = screen.queryAllByText((content) => {
+          return content.includes('Esta questão é obrigatória');
+        });
+        expect(errorText.length).toBeGreaterThan(0);
+      });
     });
 
     it('should clear error when user provides answer', async () => {
@@ -197,17 +207,25 @@ describe('ExtractionForm', () => {
         />
       );
 
+      // Confirm all questions first
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      for (const button of confirmButtons) {
+        await user.click(button);
+      }
+
       // Try to submit without answers
       const submitButton = screen.getByRole('button', {
-        name: /Enviar Respostas/i,
+        name: /Próximo/i,
       });
       await user.click(submitButton);
 
       // Check error exists
-      let errorMessages = await screen.findAllByText(
-        /Esta questão é obrigatória/i
-      );
-      expect(errorMessages.length).toBeGreaterThan(0);
+      await waitFor(() => {
+        const errorText = screen.queryAllByText((content) => {
+          return content.includes('Esta questão é obrigatória');
+        });
+        expect(errorText.length).toBeGreaterThan(0);
+      });
 
       // Select an answer for first question
       const radioButton = screen.getByRole('radio', {
@@ -215,9 +233,13 @@ describe('ExtractionForm', () => {
       });
       await user.click(radioButton);
 
-      // Error should be cleared for that question
-      errorMessages = screen.queryAllByText(/Esta questão é obrigatória/i);
-      expect(errorMessages.length).toBeLessThan(3);
+      // Error count should decrease
+      await waitFor(() => {
+        const errorText = screen.queryAllByText((content) => {
+          return content.includes('Esta questão é obrigatória');
+        });
+        expect(errorText.length).toBeLessThan(3);
+      });
     });
 
     it('should validate all required questions before submission', async () => {
@@ -238,21 +260,29 @@ describe('ExtractionForm', () => {
         screen.getByRole('radio', { name: /Alternativa B: 150 milhões/i })
       );
 
+      // Confirm all questions
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      for (const button of confirmButtons) {
+        await user.click(button);
+      }
+
       // Submit should fail - essay question not answered
       const submitButton = screen.getByRole('button', {
-        name: /Enviar Respostas/i,
+        name: /Próximo/i,
       });
       await user.click(submitButton);
 
-      const errorMessages = await screen.findAllByText(
-        /Esta questão é obrigatória/i
-      );
-      expect(errorMessages.length).toBeGreaterThan(0);
+      await waitFor(() => {
+        const errorText = screen.queryAllByText((content) => {
+          return content.includes('Esta questão é obrigatória');
+        });
+        expect(errorText.length).toBeGreaterThan(0);
+      });
     });
   });
 
   describe('Form Submission', () => {
-    it('should submit successfully with all questions answered', async () => {
+    it('should submit successfully with all questions answered and confirmed', async () => {
       const user = userEvent.setup();
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
@@ -286,9 +316,15 @@ describe('ExtractionForm', () => {
       );
       await user.type(essayTextarea, 'Educação é importante para o desenvolvimento');
 
+      // Confirm all questions
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      for (const button of confirmButtons) {
+        await user.click(button);
+      }
+
       // Submit
       const submitButton = screen.getByRole('button', {
-        name: /Enviar Respostas/i,
+        name: /Próximo/i,
       });
       await user.click(submitButton);
 
@@ -340,9 +376,15 @@ describe('ExtractionForm', () => {
       );
       await user.type(essayTextarea, 'Essay response');
 
+      // Confirm all questions
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      for (const button of confirmButtons) {
+        await user.click(button);
+      }
+
       // Submit
       const submitButton = screen.getByRole('button', {
-        name: /Enviar Respostas/i,
+        name: /Próximo/i,
       });
       await user.click(submitButton);
 
@@ -398,14 +440,20 @@ describe('ExtractionForm', () => {
       );
       await user.type(essayTextarea, 'Essay response');
 
+      // Confirm all questions
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      for (const button of confirmButtons) {
+        await user.click(button);
+      }
+
       // Submit and check for loading state
       const submitButton = screen.getByRole('button', {
-        name: /Enviar Respostas/i,
+        name: /Próximo/i,
       });
       await user.click(submitButton);
 
       expect(
-        screen.getByRole('button', { name: /Enviando respostas/i })
+        screen.getByRole('button', { name: /Processando/i })
       ).toBeInTheDocument();
       expect(submitButton).toBeDisabled();
     });
@@ -444,9 +492,15 @@ describe('ExtractionForm', () => {
       );
       await user.type(essayTextarea, 'Essay response');
 
+      // Confirm all questions
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      for (const button of confirmButtons) {
+        await user.click(button);
+      }
+
       // Submit
       const submitButton = screen.getByRole('button', {
-        name: /Enviar Respostas/i,
+        name: /Próximo/i,
       });
       await user.click(submitButton);
 
@@ -488,9 +542,15 @@ describe('ExtractionForm', () => {
       );
       await user.type(essayTextarea, 'Essay response');
 
+      // Confirm all questions
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      for (const button of confirmButtons) {
+        await user.click(button);
+      }
+
       // Submit
       const submitButton = screen.getByRole('button', {
-        name: /Enviar Respostas/i,
+        name: /Próximo/i,
       });
       await user.click(submitButton);
 
@@ -532,9 +592,15 @@ describe('ExtractionForm', () => {
       );
       await user.type(essayTextarea, 'Essay response');
 
+      // Confirm all questions
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      for (const button of confirmButtons) {
+        await user.click(button);
+      }
+
       // Submit
       const submitButton = screen.getByRole('button', {
-        name: /Enviar Respostas/i,
+        name: /Próximo/i,
       });
       await user.click(submitButton);
 
@@ -567,7 +633,8 @@ describe('ExtractionForm', () => {
         />
       );
 
-      const cancelButton = screen.getByRole('button', { name: /Cancelar/i });
+      // Get all cancel buttons (there might be multiple if multiple questions)
+      const cancelButton = screen.getAllByRole('button', { name: /Cancelar/i })[0];
       await user.click(cancelButton);
 
       expect(mockBack).toHaveBeenCalled();
@@ -605,14 +672,138 @@ describe('ExtractionForm', () => {
       );
       await user.type(essayTextarea, 'Essay response');
 
+      // Confirm all questions
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      for (const button of confirmButtons) {
+        await user.click(button);
+      }
+
       // Submit
       const submitButton = screen.getByRole('button', {
-        name: /Enviar Respostas/i,
+        name: /Próximo/i,
       });
       await user.click(submitButton);
 
       const cancelButton = screen.getByRole('button', { name: /Cancelar/i });
       expect(cancelButton).toBeDisabled();
+    });
+  });
+
+  describe('Confirmation Feature', () => {
+    it('should disable submit button until all questions are confirmed', () => {
+      render(
+        <ExtractionForm
+          examId={mockExamId}
+          examName={mockExamName}
+          questions={mockQuestions}
+        />
+      );
+
+      const submitButton = screen.getByRole('button', { name: /Próximo/i });
+      expect(submitButton).toBeDisabled();
+    });
+
+    it('should enable submit button when all questions are confirmed', async () => {
+      const user = userEvent.setup();
+      render(
+        <ExtractionForm
+          examId={mockExamId}
+          examName={mockExamName}
+          questions={mockQuestions}
+        />
+      );
+
+      // Confirm all questions
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      for (const button of confirmButtons) {
+        await user.click(button);
+      }
+
+      const submitButton = screen.getByRole('button', { name: /Próximo/i });
+      expect(submitButton).not.toBeDisabled();
+    });
+
+    it('should show confirmation counter', async () => {
+      const user = userEvent.setup();
+      render(
+        <ExtractionForm
+          examId={mockExamId}
+          examName={mockExamName}
+          questions={mockQuestions}
+        />
+      );
+
+      // Initial count with flexible matcher
+      expect(screen.getByText((content) => content.includes('0 de 3 confirmadas'))).toBeInTheDocument();
+
+      // Confirm one question
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      await user.click(confirmButtons[0]);
+
+      // Updated count
+      await waitFor(() => {
+        expect(screen.getByText((content) => content.includes('1 de 3 confirmadas'))).toBeInTheDocument();
+      });
+    });
+
+    it('should allow confirming all at once with "Confirmar todas" button', async () => {
+      const user = userEvent.setup();
+      render(
+        <ExtractionForm
+          examId={mockExamId}
+          examName={mockExamName}
+          questions={mockQuestions}
+        />
+      );
+
+      const confirmAllButton = screen.getByRole('button', { name: /Confirmar todas/i });
+      await user.click(confirmAllButton);
+
+      await waitFor(() => {
+        expect(screen.getByText((content) => content.includes('3 de 3 confirmadas'))).toBeInTheDocument();
+        expect(confirmAllButton).toBeDisabled();
+      });
+    });
+
+    it('should toggle confirmation on individual questions', async () => {
+      const user = userEvent.setup();
+      render(
+        <ExtractionForm
+          examId={mockExamId}
+          examName={mockExamName}
+          questions={[mockQuestions[0]]}
+        />
+      );
+
+      const confirmButton = screen.getByRole('button', { name: /Confirmar/i });
+
+      // Confirm
+      await user.click(confirmButton);
+      expect(screen.getByText('Confirmada')).toBeInTheDocument();
+
+      // Unconfirm
+      const confirmedButton = screen.getByRole('button', { name: /Confirmada/i });
+      await user.click(confirmedButton);
+
+      // Verify it changed back to "Confirmar"
+      expect(screen.getByRole('button', { name: /Confirmar/i })).toBeInTheDocument();
+    });
+
+    it('should display visual feedback for confirmed questions', async () => {
+      const user = userEvent.setup();
+      render(
+        <ExtractionForm
+          examId={mockExamId}
+          examName={mockExamName}
+          questions={[mockQuestions[0]]}
+        />
+      );
+
+      const confirmButton = screen.getByRole('button', { name: /Confirmar/i });
+      await user.click(confirmButton);
+
+      // Check for confirmation badge text
+      expect(screen.getByText('Confirmada')).toBeInTheDocument();
     });
   });
 
@@ -640,10 +831,13 @@ describe('ExtractionForm', () => {
         />
       );
 
-      const submitButton = screen.getByRole('button', {
-        name: /Enviar Respostas/i,
-      });
-      await user.click(submitButton);
+      // Confirm question first
+      const confirmButtons = screen.getAllByRole('button', { name: /Confirmar/i });
+      await user.click(confirmButtons[0]);
+
+      // Try to submit without answering - should show validation errors
+      const submitButtons = screen.getAllByRole('button', { name: /Próximo/i });
+      await user.click(submitButtons[0]);
 
       const results = await axe(container);
       expect(results).toHaveNoViolations();
@@ -658,7 +852,7 @@ describe('ExtractionForm', () => {
         />
       );
 
-      expect(screen.getByRole('button', { name: /Enviar Respostas/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Próximo/i })).toBeInTheDocument();
     });
   });
 });
