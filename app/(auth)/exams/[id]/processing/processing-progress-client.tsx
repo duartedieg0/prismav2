@@ -26,6 +26,11 @@ interface ProcessingProgressClientProps {
 }
 
 /**
+ * Delay before redirecting to result page on successful completion (ms)
+ */
+const REDIRECT_DELAY_MS = 1500;
+
+/**
  * Skeleton component for loading state
  */
 function ProgressSkeleton() {
@@ -65,7 +70,7 @@ export function ProcessingProgressClient({ examId }: ProcessingProgressClientPro
       const timer = setTimeout(() => {
         setHasRedirected(true);
         router.push(`/exams/${examId}/result`);
-      }, 1500);
+      }, REDIRECT_DELAY_MS);
 
       return () => clearTimeout(timer);
     }
@@ -158,23 +163,6 @@ export function ProcessingProgressClient({ examId }: ProcessingProgressClientPro
       ? Math.round((completedAdaptations / totalAdaptations) * 100)
       : 0;
 
-    // Show success state when ready
-    if (status === 'ready') {
-      return (
-        <div className="space-y-6 text-center">
-          <div className="motion-safe:animate-pulse">
-            <Brain className="w-16 h-16 text-primary mx-auto" aria-hidden="true" />
-          </div>
-          <div className="text-display-md font-display text-primary">
-            100%
-          </div>
-          <p className="text-body text-foreground">
-            Prova pronta!
-          </p>
-        </div>
-      );
-    }
-
     return (
       <div className="space-y-6">
         {/* Brain Icon with pulse animation */}
@@ -204,12 +192,45 @@ export function ProcessingProgressClient({ examId }: ProcessingProgressClientPro
 
         {/* Status Message */}
         <p className="text-body text-muted-foreground text-center">
-          Extraindo questões e gerando suportes...
+          {status === 'ready' ? 'Prova pronta!' : 'Processando adaptações...'}
         </p>
       </div>
     );
   }
 
-  // Fallback - should not reach here in normal flow
-  return null;
+  // Unknown status fallback - show error message to prevent blank screen
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl bg-surface-container-low p-4 text-center">
+        <AlertCircle
+          className="h-8 w-8 text-destructive mx-auto mb-3"
+          aria-hidden="true"
+        />
+        <h3 className="font-semibold text-body text-foreground mb-2">
+          Status desconhecido
+        </h3>
+        <p className="text-small text-muted-foreground">
+          Status desconhecido. Por favor, atualize a página.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <Button
+          onClick={() => window.location.reload()}
+          aria-label="Atualizar página"
+          className="w-full"
+        >
+          Atualizar página
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => router.push('/exams/new')}
+          aria-label="Voltar para provas"
+          className="w-full"
+        >
+          Voltar para provas
+        </Button>
+      </div>
+    </div>
+  );
 }

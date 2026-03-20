@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+
+<html lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Processamento - Adapte Minha Prova</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-container": "#646561",
+              "secondary-fixed": "#e3e3de",
+              "on-primary-fixed-variant": "#005141",
+              "on-primary-container": "#bbffe9",
+              "primary-fixed-dim": "#7bd7bd",
+              "primary": "#00614f",
+              "surface-dim": "#dadad7",
+              "tertiary-fixed": "#ffddb8",
+              "secondary-fixed-dim": "#c7c7c2",
+              "tertiary-fixed-dim": "#ffb95f",
+              "on-primary-fixed": "#002019",
+              "on-background": "#1a1c1b",
+              "on-tertiary-container": "#ffeedf",
+              "inverse-on-surface": "#f1f1ee",
+              "on-secondary-fixed": "#1b1c19",
+              "surface-bright": "#f9f9f6",
+              "inverse-primary": "#7bd7bd",
+              "on-tertiary-fixed-variant": "#653e00",
+              "surface-variant": "#e2e3e0",
+              "on-secondary-fixed-variant": "#464744",
+              "surface": "#f9f9f6",
+              "outline": "#6e7a75",
+              "surface-container-low": "#f4f4f1",
+              "on-primary": "#ffffff",
+              "surface-tint": "#006b57",
+              "surface-container-highest": "#e2e3e0",
+              "on-error": "#ffffff",
+              "error-container": "#ffdad6",
+              "background": "#f9f9f6",
+              "primary-fixed": "#97f4d9",
+              "on-tertiary-fixed": "#2a1700",
+              "primary-container": "#0d7c66",
+              "secondary-container": "#e3e3de",
+              "secondary": "#5e5f5b",
+              "on-secondary": "#ffffff",
+              "error": "#ba1a1a",
+              "surface-container": "#eeeeeb",
+              "surface-container-high": "#e8e8e5",
+              "outline-variant": "#bdc9c4",
+              "on-surface": "#1a1c1b",
+              "tertiary": "#794b00",
+              "inverse-surface": "#2f312f",
+              "tertiary-container": "#9a6100",
+              "surface-container-lowest": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "on-surface-variant": "#3e4945",
+              "on-error-container": "#93000a"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Inter"],
+              "label": ["Inter"],
+              "mono": ["JetBrains Mono"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        @keyframes subtle-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        .animate-subtle-pulse {
+            animation: subtle-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-fixed-dim selection:text-on-primary-fixed">
+<!-- Progress Ribbon (Signature Component) -->
+<div class="fixed top-0 left-0 w-full h-1.5 bg-secondary-fixed z-50">
+<div class="h-full bg-primary transition-all duration-700 ease-out" style="width: 65%;"></div>
+</div>
+<!-- Main Navigation (TopNavBar) -->
+<nav class="bg-[#FAFAF7] dark:bg-slate-900 sticky top-0 z-40">
+<div class="flex justify-between items-center w-full px-6 py-4 max-w-7xl mx-auto">
+<div class="text-xl font-extrabold text-[#0D7C66] dark:text-emerald-500 flex items-center gap-2 font-headline">
+                Adapte Minha Prova
+            </div>
+<div class="flex items-center gap-6">
+<span class="text-[#1A1C1B] dark:text-slate-300 font-['Plus_Jakarta_Sans'] font-bold text-base cursor-pointer hover:bg-[#F1F0EB] dark:hover:bg-slate-800 transition-colors px-3 py-1 rounded-lg">Entrar</span>
+</div>
+</div>
+</nav>
+<main class="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
+<!-- Abstract Editorial Background Elements -->
+<div class="absolute top-[-10%] right-[-5%] w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10"></div>
+<div class="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-tertiary/5 rounded-full blur-3xl -z-10"></div>
+<!-- Central Processing Container -->
+<div class="w-full max-w-2xl text-center space-y-12">
+<!-- Icon Hero Moment -->
+<div class="relative inline-block">
+<div class="absolute inset-0 bg-primary/10 blur-2xl rounded-full scale-150"></div>
+<div class="relative bg-surface-container-lowest p-8 rounded-full shadow-[0_12px_40px_rgba(28,25,23,0.06)] flex items-center justify-center">
+<span class="material-symbols-outlined text-6xl text-primary animate-subtle-pulse" data-icon="psychology" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+</div>
+<!-- Typography Hierarchy -->
+<div class="space-y-4">
+<div class="flex flex-col items-center gap-2">
+<span class="font-mono text-xs uppercase tracking-[0.2em] text-on-surface-variant bg-surface-container-high px-3 py-1 rounded-full">Inteligência Artificial Ativa</span>
+<h1 class="text-6xl md:text-8xl font-headline font-extrabold text-on-surface tracking-tighter">65%</h1>
+</div>
+<div class="space-y-2">
+<p class="text-xl md:text-2xl font-headline font-bold text-primary-container">Analisando questão 8 de 12...</p>
+<p class="text-on-surface-variant max-w-md mx-auto text-base leading-relaxed">
+                        Nossa IA está adaptando o conteúdo para garantir acessibilidade e clareza pedagógica.
+                    </p>
+</div>
+</div>
+<!-- Large Editorial Progress Bar -->
+<div class="space-y-6">
+<div class="h-4 w-full bg-surface-container-low rounded-full overflow-hidden relative">
+<div class="absolute top-0 left-0 h-full bg-gradient-to-r from-primary to-primary-container rounded-full transition-all duration-1000 ease-in-out" style="width: 65%;"></div>
+</div>
+<!-- Status List (Bento-style Minimal) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+<div class="bg-surface-container-low p-5 rounded-xl transition-all hover:scale-[1.02]">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-headline font-bold text-sm text-on-surface">Leitura</span>
+</div>
+<p class="text-xs text-on-surface-variant">Processamento de texto original concluído.</p>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.02)] ring-1 ring-primary/10 scale-105">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary text-xl animate-spin" data-icon="sync" style="font-variation-settings: 'opsz' 20;">sync</span>
+<span class="font-headline font-bold text-sm text-on-surface">Adaptação</span>
+</div>
+<p class="text-xs text-on-surface-variant">Reestruturando enunciados complexos.</p>
+</div>
+<div class="bg-surface-container-low p-5 rounded-xl opacity-50">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-on-surface-variant text-xl" data-icon="pending">pending</span>
+<span class="font-headline font-bold text-sm text-on-surface">Finalização</span>
+</div>
+<p class="text-xs text-on-surface-variant">Gerando versão final em PDF.</p>
+</div>
+</div>
+</div>
+<!-- Task Focused Action (Suppressed Nav Shell) -->
+<div class="pt-8">
+<button class="px-8 py-3 bg-surface-container-high text-on-surface font-headline font-bold rounded-xl hover:bg-surface-container-highest transition-all active:scale-95">
+                    Cancelar Processamento
+                </button>
+</div>
+</div>
+</main>
+<!-- Footer Identity Anchor -->
+<footer class="w-full py-8 px-6 text-center border-t-0 bg-surface">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="flex items-center gap-2 opacity-40 grayscale">
+<span class="text-sm font-headline font-extrabold text-on-surface">ADAPTE MINHA PROVA</span>
+</div>
+<div class="text-xs font-mono text-on-surface-variant tracking-widest uppercase">
+                Sessão Segura • ID: #AMP-29481-X
+            </div>
+</div>
+</footer>
+</body></html>

@@ -1,0 +1,125 @@
+
+> prismav2-new@0.1.0 test
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv4.1.0 [39m[90mC:/Users/Diego/Repositorios/prismav2[39m
+
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [31m❯[39m app/(auth)/exams/[id]/processing/processing-progress-client.test.tsx [2m([22m[2m17 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 639[2mms[22m[39m
+[31m       [31m×[31m should display 100% progress when ready[39m[32m 59[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m app/(auth)/exams/[id]/processing/processing-progress-client.test.tsx[2m > [22mProcessingProgressClient[2m > [22mAuto-Redirect on Ready[2m > [22mshould display 100% progress when ready
+[31m[1mTestingLibraryElementError[22m: Unable to find an accessible element with the role "progressbar"
+
+Here are the accessible roles:
+
+  status:
+
+  Name "Processamento concluído":
+  [36m<div[31m
+    [33maria-label[31m=[32m"Processamento concluído"[31m
+    [33mclass[31m=[32m"space-y-6 text-center"[31m
+    [33mrole[31m=[32m"status"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  [36m<p[31m
+    [33mclass[31m=[32m"text-body text-foreground"[31m
+  [36m/>[31m
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33maria-label[31m=[32m"Processamento concluído"[31m
+      [33mclass[31m=[32m"space-y-6 text-center"[31m
+      [33mrole[31m=[32m"status"[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"motion-safe:animate-pulse"[31m
+      [36m>[31m
+        [36m<svg[31m
+          [33maria-hidden[31m=[32m"true"[31m
+          [33mclass[31m=[32m"lucide lucide-brain w-16 h-16 text-primary mx-auto"[31m
+          [33mfill[31m=[32m"none"[31m
+          [33mheight[31m=[32m"24"[31m
+          [33mstroke[31m=[32m"currentColor"[31m
+          [33mstroke-linecap[31m=[32m"round"[31m
+          [33mstroke-linejoin[31m=[32m"round"[31m
+          [33mstroke-width[31m=[32m"2"[31m
+          [33mviewBox[31m=[32m"0 0 24 24"[31m
+          [33mwidth[31m=[32m"24"[31m
+          [33mxmlns[31m=[32m"http://www.w3.org/2000/svg"[31m
+        [36m>[31m
+          [36m<path[31m
+            [33md[31m=[32m"M12 18V5"[31m
+          [36m/>[31m
+          [36m<path[31m
+            [33md[31m=[32m"M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"[31m
+          [36m/>[31m
+          [36m<path[31m
+            [33md[31m=[32m"M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"[31m
+          [36m/>[31m
+          [36m<path[31m
+            [33md[31m=[32m"M17.997 5.125a4 4 0 0 1 2.526 5.77"[31m
+          [36m/>[31m
+          [36m<path[31m
+            [33md[31m=[32m"M18 18a4 4 0 0 0 2-7.464"[31m
+          [36m/>[31m
+          [36m<path[31m
+            [33md[31m=[32m"M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"[31m
+          [36m/>[31m
+          [36m<path[31m
+            [33md[31m=[32m"M6 18a4 4 0 0 1-2-7.464"[31m
+          [36m/>[31m
+          [36m<path[31m
+            [33md[31m=[32m"M6.003 5.125a4 4 0 0 0-2.526 5.77"[31m
+          [36m/>[31m
+        [36m</svg>[31m
+      [36m</div>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"text-display-md font-display text-primary"[31m
+      [36m>[31m
+        [0m100%[0m
+      [36m</div>[31m
+      [36m<p[31m
+        [33mclass[31m=[32m"text-body text-foreground"[31m
+      [36m>[31m
+        [0mProva pronta![0m
+      [36m</p>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m app/(auth)/exams/[id]/processing/processing-progress-client.test.tsx:[2m199:34[22m[39m
+    [90m197|[39m       [90m// Should show 100% progress[39m
+    [90m198|[39m       [34mexpect[39m(screen[33m.[39m[34mgetByText[39m([32m'100%'[39m))[33m.[39m[34mtoBeInTheDocument[39m()[33m;[39m
+    [90m199|[39m       [35mconst[39m progressBar [33m=[39m screen[33m.[39m[34mgetByRole[39m([32m'progressbar'[39m)[33m;[39m
+    [90m   |[39m                                  [31m^[39m
+    [90m200|[39m       [34mexpect[39m(progressBar)[33m.[39m[34mtoHaveAttribute[39m([32m'aria-valuenow'[39m[33m,[39m [32m'100'[39m)[33m;[39m
+    [90m201|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m22 passed[39m[22m[90m (23)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m264 passed[39m[22m[90m (265)[39m
+[2m   Start at [22m 13:17:09
+[2m   Duration [22m 11.02s[2m (transform 2.22s, setup 6.89s, import 10.91s, tests 17.98s, environment 37.47s)[22m
+

@@ -33,7 +33,7 @@ export async function GET(
     // Fetch exam — RLS will enforce user_id match
     const { data: exam, error } = await supabase
       .from('exams')
-      .select('id, status, error_message')
+      .select('id, status, error_message, questions:questions(count), adaptations:adaptations(count)')
       .eq('id', examId)
       .eq('user_id', user.id)
       .single();
@@ -42,10 +42,20 @@ export async function GET(
       return Response.json({ error: 'Not found' }, { status: 404 });
     }
 
+    // Calculate adaptation progress based on status
+    const questionCount = (exam.questions as unknown as { count: number } | null)?.count ?? 0;
+    const adaptationCount = (exam.adaptations as unknown as { count: number } | null)?.count ?? 0;
+    const adaptationProgress = {
+      completedCount: adaptationCount,
+      totalCount: questionCount,
+      progressPercent: questionCount > 0 ? Math.round((adaptationCount / questionCount) * 100) : 0,
+    };
+
     return Response.json({
       id: exam.id,
       status: exam.status,
       errorMessage: exam.error_message || undefined,
+      adaptationProgress,
     });
   } catch (error) {
     console.error('GET /api/exams/[id]/status error:', error);

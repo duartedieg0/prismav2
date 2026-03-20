@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Adapte Minha Prova - Nova Prova</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-container": "#646561",
+              "secondary-fixed": "#e3e3de",
+              "on-primary-fixed-variant": "#005141",
+              "on-primary-container": "#bbffe9",
+              "primary-fixed-dim": "#7bd7bd",
+              "primary": "#00614f",
+              "surface-dim": "#dadad7",
+              "tertiary-fixed": "#ffddb8",
+              "secondary-fixed-dim": "#c7c7c2",
+              "tertiary-fixed-dim": "#ffb95f",
+              "on-primary-fixed": "#002019",
+              "on-background": "#1a1c1b",
+              "on-tertiary-container": "#ffeedf",
+              "inverse-on-surface": "#f1f1ee",
+              "on-secondary-fixed": "#1b1c19",
+              "surface-bright": "#f9f9f6",
+              "inverse-primary": "#7bd7bd",
+              "on-tertiary-fixed-variant": "#653e00",
+              "surface-variant": "#e2e3e0",
+              "on-secondary-fixed-variant": "#464744",
+              "surface": "#f9f9f6",
+              "outline": "#6e7a75",
+              "surface-container-low": "#f4f4f1",
+              "on-primary": "#ffffff",
+              "surface-tint": "#006b57",
+              "surface-container-highest": "#e2e3e0",
+              "on-error": "#ffffff",
+              "error-container": "#ffdad6",
+              "background": "#f9f9f6",
+              "primary-fixed": "#97f4d9",
+              "on-tertiary-fixed": "#2a1700",
+              "primary-container": "#0d7c66",
+              "secondary-container": "#e3e3de",
+              "secondary": "#5e5f5b",
+              "on-secondary": "#ffffff",
+              "error": "#ba1a1a",
+              "surface-container": "#eeeeeb",
+              "surface-container-high": "#e8e8e5",
+              "outline-variant": "#bdc9c4",
+              "on-surface": "#1a1c1b",
+              "tertiary": "#794b00",
+              "inverse-surface": "#2f312f",
+              "tertiary-container": "#9a6100",
+              "surface-container-lowest": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "on-surface-variant": "#3e4945",
+              "on-error-container": "#93000a"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Inter"],
+              "label": ["Inter"],
+              "mono": ["JetBrains Mono"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .step-active { font-variation-settings: 'FILL' 1; }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-background min-h-screen flex">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-screen w-[240px] bg-[#F4F4F1]/80 backdrop-blur-xl flex flex-col py-6 shadow-[0_12px_40px_rgba(28,25,23,0.06)] z-50">
+<div class="px-6 mb-8">
+<h1 class="text-lg font-black text-[#0D7C66]">Adapte Minha Prova</h1>
+<p class="text-xs text-on-surface-variant font-medium">Painel Administrativo</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="text-[#1A1C1B]/70 hover:text-[#0D7C66] mx-2 my-1 px-4 py-3 flex items-center gap-3 font-semibold text-sm tracking-tight transition-all hover:bg-[#0D7C66]/10 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="bg-[#0D7C66] text-white rounded-xl mx-2 my-1 px-4 py-3 flex items-center gap-3 font-semibold text-sm tracking-tight shadow-sm" href="#">
+<span class="material-symbols-outlined" data-icon="psychology" style="font-variation-settings: 'FILL' 1;">psychology</span>
+                Modelos IA
+            </a>
+<a class="text-[#1A1C1B]/70 hover:text-[#0D7C66] mx-2 my-1 px-4 py-3 flex items-center gap-3 font-semibold text-sm tracking-tight transition-all hover:bg-[#0D7C66]/10 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+                Agentes
+            </a>
+<a class="text-[#1A1C1B]/70 hover:text-[#0D7C66] mx-2 my-1 px-4 py-3 flex items-center gap-3 font-semibold text-sm tracking-tight transition-all hover:bg-[#0D7C66]/10 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+                Disciplinas
+            </a>
+<a class="text-[#1A1C1B]/70 hover:text-[#0D7C66] mx-2 my-1 px-4 py-3 flex items-center gap-3 font-semibold text-sm tracking-tight transition-all hover:bg-[#0D7C66]/10 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="layers">layers</span>
+                Séries
+            </a>
+</nav>
+<div class="mt-auto px-2 space-y-1">
+<a class="text-[#1A1C1B]/70 hover:text-[#0D7C66] mx-2 my-1 px-4 py-3 flex items-center gap-3 font-semibold text-sm tracking-tight transition-all hover:bg-[#0D7C66]/10 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+                Perfil
+            </a>
+<a class="text-[#1A1C1B]/70 hover:text-[#0D7C66] mx-2 my-1 px-4 py-3 flex items-center gap-3 font-semibold text-sm tracking-tight transition-all hover:bg-[#0D7C66]/10 rounded-xl" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                Sair
+            </a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 ml-[240px] flex flex-col min-h-screen">
+<!-- Progress Ribbon (The Signature Component) -->
+<div class="h-1.5 w-full bg-secondary-fixed">
+<div class="h-full bg-primary w-2/4 transition-all duration-500"></div>
+</div>
+<div class="max-w-5xl mx-auto w-full px-16 py-12">
+<!-- Header Section -->
+<header class="mb-12">
+<div class="flex items-center gap-2 mb-2">
+<span class="font-mono text-[10px] uppercase tracking-widest text-primary font-bold bg-primary-fixed px-2 py-0.5 rounded">Processo de Criação</span>
+</div>
+<h2 class="text-4xl font-headline font-extrabold text-on-background tracking-tight">Nova Prova</h2>
+<p class="text-on-surface-variant mt-2 max-w-2xl">Configure os parâmetros de inteligência artificial e o perfil pedagógico da adaptação para garantir o melhor resultado para o estudante.</p>
+</header>
+<!-- Stepper -->
+<div class="flex items-center w-full mb-16 relative">
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white mb-3 shadow-md">
+<span class="material-symbols-outlined text-sm" data-icon="check">check</span>
+</div>
+<span class="text-xs font-headline font-bold text-on-surface">Upload</span>
+</div>
+<div class="flex-1 h-0.5 bg-primary -mt-8"></div>
+<div class="flex-1 flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white mb-3 ring-4 ring-primary-fixed shadow-lg">
+<span class="material-symbols-outlined text-sm step-active" data-icon="settings">settings</span>
+</div>
+<span class="text-xs font-headline font-bold text-primary">Configurações</span>
+</div>
+<div class="flex-1 h-0.5 bg-secondary-fixed -mt-8"></div>
+<div class="flex-1 flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant mb-3">
+<span class="material-symbols-outlined text-sm" data-icon="visibility">visibility</span>
+</div>
+<span class="text-xs font-headline font-bold text-on-surface-variant">Revisão</span>
+</div>
+</div>
+<!-- Bento Layout Content -->
+<div class="grid grid-cols-12 gap-8">
+<!-- Form Section -->
+<div class="col-span-7 space-y-8">
+<section class="bg-surface-container-low p-8 rounded-xl">
+<form class="space-y-8">
+<!-- Field: Modelo de IA -->
+<div class="space-y-2">
+<label class="block text-sm font-label font-semibold text-on-surface-variant ml-1">Modelo de IA</label>
+<div class="relative group">
+<select class="w-full bg-surface-container-lowest appearance-none px-5 py-4 rounded-xl outline-none ring-1 ring-outline-variant/20 focus:ring-primary/40 focus:bg-white transition-all text-on-surface font-medium">
+<option>GPT-4o (Recomendado para textos longos)</option>
+<option>Claude 3.5 Sonnet (Excelente para raciocínio lógico)</option>
+</select>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Field: Nível de Adaptação -->
+<div class="space-y-2">
+<label class="block text-sm font-label font-semibold text-on-surface-variant ml-1">Nível de Adaptação</label>
+<div class="grid grid-cols-3 gap-3">
+<button class="flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border-2 border-transparent hover:border-primary/20 transition-all rounded-xl" type="button">
+<span class="material-symbols-outlined text-primary" data-icon="format_align_left">format_align_left</span>
+<span class="text-xs font-bold">Simplificação</span>
+</button>
+<button class="flex flex-col items-center gap-2 p-4 bg-white border-2 border-primary shadow-sm transition-all rounded-xl" type="button">
+<span class="material-symbols-outlined text-primary" data-icon="auto_stories" style="font-variation-settings: 'FILL' 1;">auto_stories</span>
+<span class="text-xs font-bold text-primary">Dislexia</span>
+</button>
+<button class="flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border-2 border-transparent hover:border-primary/20 transition-all rounded-xl" type="button">
+<span class="material-symbols-outlined text-primary" data-icon="bolt">bolt</span>
+<span class="text-xs font-bold">TDAH</span>
+</button>
+</div>
+</div>
+<!-- Field: Tom de Voz -->
+<div class="space-y-2">
+<label class="block text-sm font-label font-semibold text-on-surface-variant ml-1">Tom de Voz</label>
+<div class="relative group">
+<select class="w-full bg-surface-container-lowest appearance-none px-5 py-4 rounded-xl outline-none ring-1 ring-outline-variant/20 focus:ring-primary/40 focus:bg-white transition-all text-on-surface font-medium">
+<option>Acolhedor (Linguagem empática e encorajadora)</option>
+<option>Técnico (Foco em precisão e objetividade)</option>
+</select>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</div>
+</form>
+</section>
+<!-- Navigation -->
+<div class="flex items-center justify-between pt-4">
+<button class="px-8 py-3 bg-secondary-container text-on-background font-bold rounded-xl hover:bg-secondary-fixed transition-all active:scale-95 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="arrow_back">arrow_back</span>
+                            Voltar
+                        </button>
+<button class="px-10 py-3 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-lg hover:shadow-primary/20 transition-all active:scale-95 flex items-center gap-2">
+                            Continuar
+                            <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Help/Alert Section -->
+<div class="col-span-5">
+<div class="sticky top-8 space-y-6">
+<!-- Guidance Card -->
+<div class="bg-primary-fixed/30 p-8 rounded-xl relative overflow-hidden">
+<div class="absolute -top-4 -right-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl"></div>
+<div class="relative z-10">
+<span class="material-symbols-outlined text-primary mb-4" data-icon="lightbulb" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+<h3 class="text-lg font-headline font-bold text-primary mb-3">Dica do Especialista</h3>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-4">
+                                    Para alunos com <strong>Dislexia</strong>, o sistema aplicará automaticamente a fonte <em>OpenDyslexic</em> e aumentará o espaçamento entre linhas nas questões geradas.
+                                </p>
+<p class="text-on-surface-variant text-sm leading-relaxed">
+                                    A escolha do <strong>Modelo de IA</strong> influencia na velocidade: o GPT-4o é mais lento porém mais detalhista na interpretação pedagógica.
+                                </p>
+</div>
+</div>
+<!-- Info Card Asymmetric -->
+<div class="bg-surface-container-high p-6 rounded-xl -mr-8">
+<h4 class="text-xs font-mono font-bold text-primary mb-4 uppercase tracking-tighter">Resumo das Escolhas</h4>
+<ul class="space-y-4">
+<li class="flex items-start gap-3">
+<div class="w-1 h-6 bg-primary rounded-full mt-1"></div>
+<div>
+<span class="block text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">Tecnologia</span>
+<span class="text-sm font-semibold">LLM Avançado v4.0</span>
+</div>
+</li>
+<li class="flex items-start gap-3">
+<div class="w-1 h-6 bg-primary-container rounded-full mt-1"></div>
+<div>
+<span class="block text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">Nível Educacional</span>
+<span class="text-sm font-semibold">Ensino Médio / Superior</span>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Visual Hint -->
+<footer class="mt-auto py-8 px-16 border-t-0 bg-surface-container-low/50">
+<div class="max-w-5xl mx-auto flex items-center justify-between opacity-50">
+<div class="flex items-center gap-4">
+<img alt="" class="rounded-lg grayscale" data-alt="Abstract AI icon representing intelligent processing" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXwrq-dL1YbSgEm149KWp7EvTyQHdyZRO9xVmkkE5LOQk0eSqyIZ0xroAz45oC9fLOTQjh_PcTq9L2kajUjO6Dx_mstik2VMaXmcAzqjxJwqwTh3SaQhV2ymdCdMiAN9c0Gdz52Coax9EzF_lMNJ1wmzjka2HmyX9lUR0wBSQqnAvEgjr-zOUP_Isb_3G3PkyRnv68blXO9GxssPaSJXVrYQxV54zirJO0qRDmtKYyVDZJVEgnmuGOhMUAL6prGmZ6hWdFxfYz7YYv"/>
+<div>
+<p class="text-xs font-mono">ENCRYPTED_SESSION_ID: 8823-X</p>
+<p class="text-[10px] font-medium uppercase tracking-widest">Adaptação Assistida por IA</p>
+</div>
+</div>
+<div class="flex gap-6">
+<span class="text-[10px] font-bold uppercase tracking-widest">Privacidade</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">Termos</span>
+</div>
+</div>
+</footer>
+</main>
+</body></html>
