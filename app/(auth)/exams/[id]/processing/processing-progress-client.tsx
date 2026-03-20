@@ -4,7 +4,8 @@
  *
  * Features:
  * - Polls exam status every 2 seconds
- * - Displays real-time adaptation progress (X/Y questions)
+ * - Displays real-time adaptation progress with animated Brain icon
+ * - Shows percentage display and expressive progress bar
  * - Shows loading skeleton while polling
  * - Displays error state with retry button
  * - Auto-redirects to /exams/{id}/result when status becomes 'ready'
@@ -15,10 +16,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AdaptationProgress } from '@/components/adaptation-progress';
 import { useExamStatusPoller } from '@/hooks/use-exam-status-poller';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Brain } from 'lucide-react';
 
 interface ProcessingProgressClientProps {
   examId: string;
@@ -117,14 +117,44 @@ export function ProcessingProgressClient({ examId }: ProcessingProgressClientPro
 
   // Processing in progress - only show relevant statuses
   if (status === 'processing' || status === 'ready') {
+    const totalAdaptations = adaptationProgress?.totalCount ?? 0;
+    const completedAdaptations = adaptationProgress?.completedCount ?? 0;
+    const progress = totalAdaptations > 0
+      ? Math.round((completedAdaptations / totalAdaptations) * 100)
+      : 0;
+
     return (
-      <AdaptationProgress
-        status={status}
-        totalAdaptations={adaptationProgress?.totalCount ?? 0}
-        completedAdaptations={adaptationProgress?.completedCount ?? 0}
-        errorAdaptations={0}
-        examId={examId}
-      />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8">
+        {/* Brain Icon with pulse animation */}
+        <div className="motion-safe:animate-pulse">
+          <Brain className="w-16 h-16 text-primary" aria-hidden="true" />
+        </div>
+
+        {/* Percentage Display */}
+        <div className="text-display-md font-display text-primary">
+          {progress}%
+        </div>
+
+        {/* Progress Bar */}
+        <div
+          role="progressbar"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Progresso da adaptação"
+          className="w-full max-w-sm h-3 rounded-full bg-muted overflow-hidden"
+        >
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {/* Status Message */}
+        <p className="text-body text-muted-foreground text-center max-w-xs">
+          Processando adaptações...
+        </p>
+      </div>
     );
   }
 

@@ -27,31 +27,6 @@ vi.mock('@/hooks/use-exam-status-poller', () => ({
   useExamStatusPoller: vi.fn(),
 }));
 
-// Mock the AdaptationProgress component
-interface MockAdaptationProgressProps {
-  status: string;
-  totalAdaptations: number;
-  completedAdaptations: number;
-  errorAdaptations: number;
-  examId?: string;
-}
-
-vi.mock('@/components/adaptation-progress', () => ({
-  AdaptationProgress: ({
-    status,
-    totalAdaptations,
-    completedAdaptations,
-    errorAdaptations,
-    examId,
-  }: MockAdaptationProgressProps) => (
-    <div data-testid="adaptation-progress">
-      <div>Status: {status}</div>
-      <div>Progress: {completedAdaptations}/{totalAdaptations}</div>
-      <div>Errors: {errorAdaptations}</div>
-      {examId && <div>Exam ID: {examId}</div>}
-    </div>
-  ),
-}));
 
 // Mock Button component
 interface MockButtonProps {
@@ -115,13 +90,13 @@ describe('ProcessingProgressClient', () => {
 
       render(<ProcessingProgressClient examId={examId} />);
 
-      expect(screen.queryByTestId('adaptation-progress')).not.toBeInTheDocument();
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
       expect(screen.queryByText(/Erro ao processar/)).not.toBeInTheDocument();
     });
   });
 
   describe('Processing State', () => {
-    it('should display adaptation progress with correct counts', () => {
+    it('should display percentage progress with brain icon', () => {
       (useExamStatusPoller as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         status: 'processing',
         isPolling: true,
@@ -135,10 +110,17 @@ describe('ProcessingProgressClient', () => {
 
       render(<ProcessingProgressClient examId={examId} />);
 
-      expect(screen.getByTestId('adaptation-progress')).toBeInTheDocument();
-      expect(screen.getByText('Status: processing')).toBeInTheDocument();
-      expect(screen.getByText('Progress: 5/10')).toBeInTheDocument();
-      expect(screen.getByText(`Exam ID: ${examId}`)).toBeInTheDocument();
+      // Should display percentage
+      expect(screen.getByText('50%')).toBeInTheDocument();
+
+      // Should have progress bar with aria attributes
+      const progressBar = screen.getByRole('progressbar');
+      expect(progressBar).toHaveAttribute('aria-valuenow', '50');
+      expect(progressBar).toHaveAttribute('aria-valuemin', '0');
+      expect(progressBar).toHaveAttribute('aria-valuemax', '100');
+
+      // Should have status message
+      expect(screen.getByText('Processando adaptações...')).toBeInTheDocument();
     });
 
     it('should handle processing status with no progress yet', () => {
@@ -155,10 +137,12 @@ describe('ProcessingProgressClient', () => {
 
       render(<ProcessingProgressClient examId={examId} />);
 
-      expect(screen.getByText('Progress: 0/15')).toBeInTheDocument();
+      expect(screen.getByText('0%')).toBeInTheDocument();
+      const progressBar = screen.getByRole('progressbar');
+      expect(progressBar).toHaveAttribute('aria-valuenow', '0');
     });
 
-    it('should update progress as polling continues', async () => {
+    it('should update progress bar as polling continues', async () => {
       const { rerender } = render(<ProcessingProgressClient examId={examId} />);
 
       // Initial state
@@ -174,7 +158,7 @@ describe('ProcessingProgressClient', () => {
       });
 
       rerender(<ProcessingProgressClient examId={examId} />);
-      expect(screen.getByText('Progress: 3/10')).toBeInTheDocument();
+      expect(screen.getByText('30%')).toBeInTheDocument();
 
       // Updated state
       (useExamStatusPoller as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -189,12 +173,14 @@ describe('ProcessingProgressClient', () => {
       });
 
       rerender(<ProcessingProgressClient examId={examId} />);
-      expect(screen.getByText('Progress: 8/10')).toBeInTheDocument();
+      expect(screen.getByText('80%')).toBeInTheDocument();
+      const progressBar = screen.getByRole('progressbar');
+      expect(progressBar).toHaveAttribute('aria-valuenow', '80');
     });
   });
 
   describe('Auto-Redirect on Ready', () => {
-    it('should display completed status when ready', async () => {
+    it('should display 100% progress when ready', async () => {
       (useExamStatusPoller as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         status: 'ready',
         isPolling: false,
@@ -208,10 +194,10 @@ describe('ProcessingProgressClient', () => {
 
       render(<ProcessingProgressClient examId={examId} />);
 
-      // Should show AdaptationProgress component in ready state
-      expect(screen.getByTestId('adaptation-progress')).toBeInTheDocument();
-      expect(screen.getByText('Status: ready')).toBeInTheDocument();
-      expect(screen.getByText('Progress: 10/10')).toBeInTheDocument();
+      // Should show 100% progress
+      expect(screen.getByText('100%')).toBeInTheDocument();
+      const progressBar = screen.getByRole('progressbar');
+      expect(progressBar).toHaveAttribute('aria-valuenow', '100');
     });
 
     it('should have cleanup effect on unmount', async () => {
@@ -362,7 +348,7 @@ describe('ProcessingProgressClient', () => {
       });
     });
 
-    it('should pass examId to AdaptationProgress for a11y', () => {
+    it('should have accessible brain icon with aria-hidden', () => {
       (useExamStatusPoller as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         status: 'processing',
         isPolling: true,
@@ -376,7 +362,9 @@ describe('ProcessingProgressClient', () => {
 
       render(<ProcessingProgressClient examId={examId} />);
 
-      expect(screen.getByText(`Exam ID: ${examId}`)).toBeInTheDocument();
+      // Brain icon should be hidden from screen readers
+      const brainIcon = document.querySelector('[class*="lucide-brain"]');
+      expect(brainIcon).toHaveAttribute('aria-hidden', 'true');
     });
   });
 
@@ -391,8 +379,9 @@ describe('ProcessingProgressClient', () => {
 
       render(<ProcessingProgressClient examId={examId} />);
 
-      expect(screen.getByTestId('adaptation-progress')).toBeInTheDocument();
-      expect(screen.getByText('Progress: 0/0')).toBeInTheDocument();
+      expect(screen.getByText('0%')).toBeInTheDocument();
+      const progressBar = screen.getByRole('progressbar');
+      expect(progressBar).toHaveAttribute('aria-valuenow', '0');
     });
 
     it('should handle error status from hook', () => {
@@ -405,8 +394,8 @@ describe('ProcessingProgressClient', () => {
 
       render(<ProcessingProgressClient examId={examId} />);
 
-      // Should render component without crashing
-      expect(screen.queryByTestId('adaptation-progress')).not.toBeInTheDocument();
+      // Should render component without crashing (returns null for unknown statuses)
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
     });
   });
 
