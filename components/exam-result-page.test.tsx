@@ -74,11 +74,11 @@ describe('ExamResultPage', () => {
   });
 
   describe('rendering', () => {
-    it('should render exam title', async () => {
+    it('should render result page header', async () => {
       render(<ExamResultPage examId="exam-123" />);
 
       await waitFor(() => {
-        expect(screen.getByText('Math Test')).toBeTruthy();
+        expect(screen.getByText('Resultado da Adaptação')).toBeTruthy();
       });
     });
 
@@ -107,17 +107,17 @@ describe('ExamResultPage', () => {
       render(<ExamResultPage examId="exam-123" />);
 
       await waitFor(() => {
-        // Should have exam title which indicates data is loaded
-        expect(screen.getByText('Math Test')).toBeTruthy();
+        // Should have header which indicates data is loaded
+        expect(screen.getByText('Resultado da Adaptação')).toBeTruthy();
       });
     });
 
-    it('should display exam metadata (subject, grade level)', async () => {
+    it('should render navigation buttons', async () => {
       render(<ExamResultPage examId="exam-123" />);
 
       await waitFor(() => {
-        const heading = screen.getByText('Math Test');
-        expect(heading).toBeTruthy();
+        expect(screen.getByText('Exportar PDF')).toBeTruthy();
+        expect(screen.getByText('Voltar ao Dashboard')).toBeTruthy();
       });
     });
   });
@@ -165,7 +165,7 @@ describe('ExamResultPage', () => {
       render(<ExamResultPage examId="exam-123" />);
 
       await waitFor(() => {
-        expect(screen.getByText('Math Test')).toBeTruthy();
+        expect(screen.getByText('Resultado da Adaptação')).toBeTruthy();
       });
     });
   });
@@ -177,7 +177,7 @@ describe('ExamResultPage', () => {
       await waitFor(() => {
         const heading = screen.getByRole('heading', { level: 1 });
         expect(heading).toBeTruthy();
-        expect(heading.textContent).toBeTruthy();
+        expect(heading.textContent).toContain('Resultado da Adaptação');
       });
     });
 

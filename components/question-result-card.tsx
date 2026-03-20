@@ -2,7 +2,8 @@
 
 /**
  * QuestionResultCard Component
- * Displays adapted question with BNCC/Bloom analysis and feedback collection
+ * Displays adapted question in two-column layout (original | adapted)
+ * with copy button and thumbs feedback system
  *
  * Props:
  * - question: Original question data
@@ -12,14 +13,129 @@
  */
 
 import { useState } from 'react';
-import { Copy, Star } from 'lucide-react';
+import { Copy, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { copyToClipboard, formatQuestionForClipboard } from '@/lib/utils/copyable-block';
 import type { Question } from '@/lib/types/extraction';
 import type { Adaptation } from '@/lib/types/adaptation';
 import type { QuestionFeedback } from '@/lib/types/feedback';
+
+/**
+ * CopyButton Subcomponent
+ * Copies adapted text to clipboard with feedback
+ */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={handleCopy}
+      className={copied ? 'text-success' : ''}
+    >
+      {copied ? (
+        <>
+          <Check className="w-4 h-4" aria-hidden="true" />
+          Copiado!
+        </>
+      ) : (
+        <>
+          <Copy className="w-4 h-4" aria-hidden="true" />
+          Copiar adaptação
+        </>
+      )}
+    </Button>
+  );
+}
+
+/**
+ * ThumbsFeedback Subcomponent
+ * Collects feedback with thumbs up/down and optional comment
+ */
+function ThumbsFeedback({
+  onSubmit,
+  existingFeedback,
+}: {
+  onSubmit: (data: { rating: 'up' | 'down' | null; comment: string }) => Promise<void>;
+  existingFeedback: QuestionFeedback | null;
+}) {
+  const [selected, setSelected] = useState<'up' | 'down' | null>(
+    existingFeedback?.rating ? (existingFeedback.rating > 2 ? 'up' : 'down') : null
+  );
+  const [comment, setComment] = useState(existingFeedback?.comment ?? '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
+        rating: selected,
+        comment,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-small text-muted-foreground">Esta adaptação foi útil?</p>
+      <div className="flex gap-2">
+        <Button
+          variant={selected === 'up' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSelected('up')}
+          disabled={isSubmitting}
+          aria-label="Thumbs up"
+        >
+          <ThumbsUp className="w-4 h-4" aria-hidden="true" />
+        </Button>
+        <Button
+          variant={selected === 'down' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSelected('down')}
+          disabled={isSubmitting}
+          aria-label="Thumbs down"
+        >
+          <ThumbsDown className="w-4 h-4" aria-hidden="true" />
+        </Button>
+      </div>
+      {selected && (
+        <>
+          <textarea
+            className="rounded-md border border-border bg-background px-3 py-2 text-small placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            placeholder="Deixe um comentário (opcional)..."
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            disabled={isSubmitting}
+            aria-label="Comment about adaptation feedback"
+            maxLength={500}
+          />
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Enviando...' : 'Enviar feedback'}
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
 
 interface QuestionResultCardProps {
   question: Question;
@@ -38,163 +154,53 @@ export default function QuestionResultCard({
   feedback,
   onFeedbackSubmit,
 }: QuestionResultCardProps) {
-  const [rating, setRating] = useState<number | null>(feedback?.rating ?? null);
-  const [comment, setComment] = useState(feedback?.comment ?? '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copyFeedback, setCopyFeedback] = useState('');
+  const originalText = question.question_text;
+  const adaptedText = adaptation.adapted_statement;
 
-  const handleCopy = async () => {
-    const text = formatQuestionForClipboard(
-      {
-        question_text: adaptation.adapted_statement,
-        alternatives: adaptation.adapted_alternatives
-          ? Object.fromEntries(
-              adaptation.adapted_alternatives.map((alt) => [alt.label, alt.text])
-            )
-          : null,
-      },
-      question.correct_answer
-    );
-
-    const success = await copyToClipboard(text);
-    if (success) {
-      setCopyFeedback('Copied!');
-      setTimeout(() => setCopyFeedback(''), 2000);
-    }
-  };
-
-  const handleSubmitFeedback = async () => {
-    if (rating === null && !comment) return;
-
-    setIsSubmitting(true);
-    try {
-      await onFeedbackSubmit({
-        adaptation_id: adaptation.id,
-        rating: rating ?? null,
-        comment: comment || null,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleThumbsFeedback = async (data: {
+    rating: 'up' | 'down' | null;
+    comment: string;
+  }) => {
+    const ratingValue = data.rating === 'up' ? 5 : data.rating === 'down' ? 1 : null;
+    await onFeedbackSubmit({
+      adaptation_id: adaptation.id,
+      rating: ratingValue,
+      comment: data.comment || null,
+    });
   };
 
   return (
-    <div className="border rounded-lg p-6 space-y-6 bg-white">
-      {/* Question Number */}
-      <div className="text-sm font-medium text-gray-500">
-        Question {question.order_number}
-      </div>
-
-      {/* Adapted Statement */}
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-gray-900">
-          {adaptation.adapted_statement}
+    <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+      {/* Card header */}
+      <div className="flex items-center justify-between border-b border-border px-6 py-3">
+        <h3 className="text-small font-medium text-muted-foreground">
+          Questão {question.order_number}
         </h3>
-
-        {/* Adapted Alternatives (for objective questions) */}
-        {adaptation.adapted_alternatives && (
-          <div className="space-y-2 mt-4">
-            {adaptation.adapted_alternatives.map((alt) => (
-              <div
-                key={alt.label}
-                className="flex items-start gap-3 p-3 rounded bg-gray-50"
-              >
-                <span className="font-semibold text-gray-600 flex-shrink-0">
-                  {alt.label})
-                </span>
-                <span className="text-gray-700">{alt.text}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <CopyButton text={adaptedText} />
       </div>
 
-      {/* Pedagogical Badges */}
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="secondary" className="text-xs">
-          BNCC: {adaptation.bncc_skill_code}
-        </Badge>
-        <Badge variant="secondary" className="text-xs">
-          {adaptation.bloom_level}
-        </Badge>
-      </div>
-
-      {/* Copy Button */}
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleCopy}
-          className="gap-2"
-          disabled={isSubmitting}
-        >
-          <Copy className="w-4 h-4" />
-          Copy
-        </Button>
-        {copyFeedback && (
-          <span className="text-sm text-green-600">{copyFeedback}</span>
-        )}
-      </div>
-
-      {/* Divider */}
-      <div className="border-t" />
-
-      {/* Feedback Section */}
-      <div className="space-y-4">
-        <h4 className="font-medium text-gray-900">Your Feedback</h4>
-
-        {/* Star Rating */}
-        <div className="space-y-2">
-          <label className="text-sm text-gray-600">How helpful is this?</label>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                onClick={() => setRating(star)}
-                disabled={isSubmitting}
-                className={`p-2 rounded transition-colors ${
-                  rating === star
-                    ? 'bg-yellow-100 text-yellow-600'
-                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                }`}
-                aria-label={`${star} stars`}
-                aria-pressed={rating === star}
-                tabIndex={0}
-              >
-                <Star className="w-5 h-5 fill-current" />
-              </button>
-            ))}
-          </div>
+      {/* Two-column content */}
+      <div className="grid grid-cols-1 md:grid-cols-2">
+        <div className="p-6 md:border-r md:border-border">
+          <p className="text-caption uppercase tracking-wide text-muted-foreground mb-3">
+            Original
+          </p>
+          <p className="text-body leading-relaxed">{originalText}</p>
         </div>
-
-        {/* Comment Field */}
-        <div className="space-y-2">
-          <label htmlFor={`comment-${adaptation.id}`} className="text-sm text-gray-600">
-            Comment (optional)
-          </label>
-          <Textarea
-            id={`comment-${adaptation.id}`}
-            placeholder="Share your thoughts about this adaptation..."
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            disabled={isSubmitting}
-            className="min-h-24"
-            maxLength={5000}
-            aria-label="Comment text area, maximum 5000 characters"
-          />
-          <div className="text-xs text-gray-500 text-right">
-            {comment.length}/5000
-          </div>
+        <div className="p-6 border-t border-border md:border-t-0">
+          <p className="text-caption uppercase tracking-wide text-muted-foreground mb-3">
+            Adaptada
+          </p>
+          <p className="text-body leading-relaxed">{adaptedText}</p>
         </div>
+      </div>
 
-        {/* Submit Button */}
-        <Button
-          onClick={handleSubmitFeedback}
-          disabled={isSubmitting || (!rating && !comment)}
-          className="w-full"
-        >
-          {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
-        </Button>
+      {/* Feedback */}
+      <div className="border-t border-border px-6 py-4">
+        <ThumbsFeedback
+          onSubmit={handleThumbsFeedback}
+          existingFeedback={feedback}
+        />
       </div>
     </div>
   );

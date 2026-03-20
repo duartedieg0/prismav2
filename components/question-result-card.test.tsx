@@ -45,6 +45,20 @@ const mockAdaptation = {
 
 describe('QuestionResultCard', () => {
   describe('rendering', () => {
+    it('should render original question text', () => {
+      const onFeedbackSubmit = vi.fn();
+      render(
+        <QuestionResultCard
+          question={mockQuestion}
+          adaptation={mockAdaptation}
+          feedback={null}
+          onFeedbackSubmit={onFeedbackSubmit}
+        />
+      );
+
+      expect(screen.getByText('What is the capital of France?')).toBeTruthy();
+    });
+
     it('should render adapted question text', () => {
       const onFeedbackSubmit = vi.fn();
       render(
@@ -59,7 +73,7 @@ describe('QuestionResultCard', () => {
       expect(screen.getByText('What city is the capital of France?')).toBeTruthy();
     });
 
-    it('should render adapted alternatives for objective questions', () => {
+    it('should render two-column layout labels', () => {
       const onFeedbackSubmit = vi.fn();
       render(
         <QuestionResultCard
@@ -70,27 +84,8 @@ describe('QuestionResultCard', () => {
         />
       );
 
-      expect(screen.getByText('England capital')).toBeTruthy();
-      expect(screen.getByText('France capital')).toBeTruthy();
-      expect(screen.getByText('Germany capital')).toBeTruthy();
-    });
-
-    it('should render BNCC and Bloom badges', () => {
-      const onFeedbackSubmit = vi.fn();
-      const { container } = render(
-        <QuestionResultCard
-          question={mockQuestion}
-          adaptation={mockAdaptation}
-          feedback={null}
-          onFeedbackSubmit={onFeedbackSubmit}
-        />
-      );
-
-      // Look for badge elements that contain BNCC code and Bloom level
-      const badges = container.querySelectorAll('[data-slot="badge"]');
-      const badgeTexts = Array.from(badges).map((b) => b.textContent || '');
-      expect(badgeTexts.some((text) => text.includes('EF89LP01'))).toBe(true);
-      expect(badgeTexts.some((text) => text.includes('Remember'))).toBe(true);
+      expect(screen.getByText('Original')).toBeTruthy();
+      expect(screen.getByText('Adaptada')).toBeTruthy();
     });
 
     it('should render copy button', () => {
@@ -104,11 +99,11 @@ describe('QuestionResultCard', () => {
         />
       );
 
-      const copyButton = screen.getByRole('button', { name: /copy/i });
+      const copyButton = screen.getByRole('button', { name: /copiar/i });
       expect(copyButton).toBeTruthy();
     });
 
-    it('should render star rating input', () => {
+    it('should render thumbs feedback buttons', () => {
       const onFeedbackSubmit = vi.fn();
       render(
         <QuestionResultCard
@@ -119,13 +114,15 @@ describe('QuestionResultCard', () => {
         />
       );
 
-      const stars = screen.getAllByRole('button', { name: /star/i });
-      expect(stars.length).toBeGreaterThan(0);
+      const thumbsUp = screen.getByLabelText('Thumbs up');
+      const thumbsDown = screen.getByLabelText('Thumbs down');
+      expect(thumbsUp).toBeTruthy();
+      expect(thumbsDown).toBeTruthy();
     });
 
-    it('should render comment field', () => {
+    it('should render question number', () => {
       const onFeedbackSubmit = vi.fn();
-      const { container } = render(
+      render(
         <QuestionResultCard
           question={mockQuestion}
           adaptation={mockAdaptation}
@@ -134,31 +131,11 @@ describe('QuestionResultCard', () => {
         />
       );
 
-      const textareas = container.querySelectorAll('textarea');
-      expect(textareas.length).toBeGreaterThan(0);
+      expect(screen.getByText(/Questão 1/)).toBeTruthy();
     });
   });
 
   describe('interaction', () => {
-    it('should update star rating on click', () => {
-      const onFeedbackSubmit = vi.fn();
-      render(
-        <QuestionResultCard
-          question={mockQuestion}
-          adaptation={mockAdaptation}
-          feedback={null}
-          onFeedbackSubmit={onFeedbackSubmit}
-        />
-      );
-
-      // Stars should be clickable buttons
-      const buttons = screen.getAllByRole('button');
-      const starButtons = buttons.filter((btn) =>
-        btn.getAttribute('aria-label')?.includes('star')
-      );
-      expect(starButtons.length).toBeGreaterThanOrEqual(5);
-    });
-
     it('should have functional copy button', () => {
       const onFeedbackSubmit = vi.fn();
       render(
@@ -170,18 +147,51 @@ describe('QuestionResultCard', () => {
         />
       );
 
-      const copyButton = screen.getByRole('button', { name: /copy/i });
+      const copyButton = screen.getByRole('button', { name: /copiar/i });
       expect(copyButton).toBeTruthy();
       expect(copyButton).not.toBeDisabled();
     });
 
-    it('should display existing feedback rating', () => {
+    it('should have functional thumbs feedback buttons', () => {
+      const onFeedbackSubmit = vi.fn();
+      render(
+        <QuestionResultCard
+          question={mockQuestion}
+          adaptation={mockAdaptation}
+          feedback={null}
+          onFeedbackSubmit={onFeedbackSubmit}
+        />
+      );
+
+      const thumbsUp = screen.getByLabelText('Thumbs up');
+      const thumbsDown = screen.getByLabelText('Thumbs down');
+      expect(thumbsUp).not.toBeDisabled();
+      expect(thumbsDown).not.toBeDisabled();
+    });
+
+    it('should display comment field when feedback is selected', () => {
+      const onFeedbackSubmit = vi.fn();
+      const { container } = render(
+        <QuestionResultCard
+          question={mockQuestion}
+          adaptation={mockAdaptation}
+          feedback={null}
+          onFeedbackSubmit={onFeedbackSubmit}
+        />
+      );
+
+      // Initially no textarea should be visible
+      const textareas = container.querySelectorAll('textarea');
+      expect(textareas.length).toBe(0);
+    });
+
+    it('should display existing feedback selection', () => {
       const existingFeedback = {
         id: 'f1',
         exam_id: 'exam-1',
         adaptation_id: mockAdaptation.id,
-        rating: 4,
-        comment: null,
+        rating: 5,
+        comment: 'Great!',
         created_at: '2026-03-19T00:00:00Z',
       };
       const onFeedbackSubmit = vi.fn();
@@ -195,15 +205,15 @@ describe('QuestionResultCard', () => {
       );
 
       // Verify component renders with existing feedback
-      expect(screen.getByText('Your Feedback')).toBeTruthy();
-      // The rating should be loaded into state - check for textareas
+      expect(screen.getByText('Esta adaptação foi útil?')).toBeTruthy();
+      // The textarea should be visible since feedback exists
       const textareas = container.querySelectorAll('textarea');
       expect(textareas.length).toBeGreaterThan(0);
     });
   });
 
   describe('accessibility', () => {
-    it('should have proper ARIA labels on star rating buttons', () => {
+    it('should have proper ARIA labels on thumbs feedback buttons', () => {
       const onFeedbackSubmit = vi.fn();
       render(
         <QuestionResultCard
@@ -214,19 +224,13 @@ describe('QuestionResultCard', () => {
         />
       );
 
-      const stars = screen.getAllByRole('button');
-      const starButtons = stars.filter((btn) =>
-        btn.getAttribute('aria-label')?.includes('star')
-      );
-      expect(starButtons.length).toBeGreaterThan(0);
-      // Verify each star has proper ARIA attributes
-      starButtons.forEach((star) => {
-        expect(star.hasAttribute('aria-label')).toBe(true);
-        expect(star.hasAttribute('aria-pressed')).toBe(true);
-      });
+      const thumbsUp = screen.getByLabelText('Thumbs up');
+      const thumbsDown = screen.getByLabelText('Thumbs down');
+      expect(thumbsUp.hasAttribute('aria-label')).toBe(true);
+      expect(thumbsDown.hasAttribute('aria-label')).toBe(true);
     });
 
-    it('should allow keyboard navigation of star rating', () => {
+    it('should allow keyboard navigation of feedback buttons', () => {
       const onFeedbackSubmit = vi.fn();
       render(
         <QuestionResultCard
@@ -237,15 +241,14 @@ describe('QuestionResultCard', () => {
         />
       );
 
-      const stars = screen.getAllByRole('button');
-      const starButtons = stars.filter((btn) =>
-        btn.getAttribute('aria-label')?.includes('star')
-      );
-      // First star should be focusable (tabindex >= 0 or no tabindex)
-      expect(starButtons.length).toBeGreaterThan(0);
+      const thumbsUp = screen.getByLabelText('Thumbs up');
+      const thumbsDown = screen.getByLabelText('Thumbs down');
+      // Buttons should be focusable (no tabindex="-1")
+      expect(thumbsUp).toBeTruthy();
+      expect(thumbsDown).toBeTruthy();
     });
 
-    it('should have proper form semantics', () => {
+    it('should have proper semantic structure', () => {
       const onFeedbackSubmit = vi.fn();
       render(
         <QuestionResultCard
@@ -256,13 +259,13 @@ describe('QuestionResultCard', () => {
         />
       );
 
-      // Check for form labels
-      expect(screen.getByText('How helpful is this?')).toBeTruthy();
-      expect(screen.getByText(/comment/i)).toBeTruthy();
-
-      // Check for submit button
-      const submitButton = screen.getByRole('button', { name: /submit feedback/i });
-      expect(submitButton).toBeTruthy();
+      // Check for heading
+      expect(screen.getByRole('heading')).toBeTruthy();
+      // Check for feedback prompt
+      expect(screen.getByText('Esta adaptação foi útil?')).toBeTruthy();
+      // Check for buttons
+      const thumbsUp = screen.getByLabelText('Thumbs up');
+      expect(thumbsUp).toBeTruthy();
     });
   });
 });

@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import QuestionResultCard from './question-result-card';
 import { Button } from '@/components/ui/button';
 import type { Question } from '@/lib/types/extraction';
@@ -127,14 +128,16 @@ export default function ExamResultPage({ examId }: ExamResultPageProps) {
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-gray-900">{exam.title}</h1>
-        {exam.topic && (
-          <p className="text-gray-600">Topic: {exam.topic}</p>
-        )}
-        <p className="text-sm text-gray-500">
-          {exam.questions.length} question{exam.questions.length !== 1 ? 's' : ''}
-        </p>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-display-md font-display text-foreground">
+          Resultado da Adaptação
+        </h1>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm">Exportar PDF</Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/dashboard">Voltar ao Dashboard</Link>
+          </Button>
+        </div>
       </div>
 
       {/* Questions */}
