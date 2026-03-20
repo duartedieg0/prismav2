@@ -26,8 +26,8 @@ export interface AdaptationProgress {
  * Hook return value for exam status polling
  */
 export interface UseExamStatusPollerReturn {
-  /** Current exam status (from last API response or initial null) */
-  status: ExamStatus | null;
+  /** Current exam status (from last API response or initial null, or 'timeout') */
+  status: ExamStatus | 'timeout' | null;
   /** True while polling is active (status is not terminal) */
   isPolling: boolean;
   /** Error message if polling failed, null if successful */
@@ -40,10 +40,12 @@ export interface UseExamStatusPollerReturn {
  * Configuration options for the polling hook
  */
 export interface UseExamStatusPollerOptions {
-  /** Polling interval in milliseconds (default: 2000ms) */
+  /** Polling interval in milliseconds (default: 7000ms, spec requires 5-10s) */
   interval?: number;
   /** Maximum number of retries on API failures (default: 3) */
   maxRetries?: number;
+  /** Timeout in milliseconds for maximum polling duration (default: 1800000ms / 30 minutes) */
+  timeoutMs?: number;
 }
 
 /**
@@ -65,11 +67,12 @@ interface StatusResponse {
  *
  * Behavior:
  * - Starts polling immediately on mount
- * - Fetches status every 2 seconds (configurable) via GET /api/exams/[id]/status
- * - Stops polling when status becomes 'ready' or 'error' (terminal states)
+ * - Fetches status every 7 seconds (configurable, spec requires 5-10s) via GET /api/exams/[id]/status
+ * - Stops polling when status becomes 'ready', 'error', or after 30 minutes timeout (terminal states)
  * - Implements exponential backoff on API failures with max retries
  * - Automatically cleans up interval on unmount or when polling stops
  * - No memory leaks — all timers and state cleared on unmount
+ * - 30-minute timeout with "timeout" status if processing exceeds maximum duration
  *
  * Error handling:
  * - Network errors: retries up to maxRetries times with exponential backoff
@@ -96,9 +99,9 @@ export function useExamStatusPoller(
   examId: string,
   options?: UseExamStatusPollerOptions
 ): UseExamStatusPollerReturn {
-  const { interval = 2000, maxRetries = 3 } = options || {};
+  const { interval = 7000, maxRetries = 3, timeoutMs = 1800000 } = options || {};
 
-  const [status, setStatus] = useState<ExamStatus | null>(null);
+  const [status, setStatus] = useState<ExamStatus | 'timeout' | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adaptationProgress, setAdaptationProgress] = useState<AdaptationProgress | null>(null);
@@ -106,11 +109,25 @@ export function useExamStatusPoller(
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const retryCountRef = useRef(0);
   const isMountedRef = useRef(true);
+  const startTimeRef = useRef<number | null>(null);
 
   /**
-   * Fetches current exam status from API with retry logic
+   * Fetches current exam status from API with retry logic and timeout checking
    */
   const fetchStatus = useCallback(async () => {
+    // Check for timeout (30 minutes = 1800000ms)
+    if (startTimeRef.current !== null) {
+      const elapsedTime = Date.now() - startTimeRef.current;
+      if (elapsedTime > timeoutMs) {
+        if (isMountedRef.current) {
+          setStatus('timeout');
+          setIsPolling(false);
+          setError('Este processo está demorando mais que o esperado. Por favor, contate o suporte.');
+        }
+        return;
+      }
+    }
+
     try {
       const response = await fetch(`/api/exams/${examId}/status`, {
         method: 'GET',
@@ -182,15 +199,16 @@ export function useExamStatusPoller(
         setIsPolling(false);
       }
     }
-  }, [examId, maxRetries]);
+  }, [examId, maxRetries, timeoutMs]);
 
   /**
-   * Sets up polling interval
+   * Sets up polling interval with timeout tracking
    */
   useEffect(() => {
     isMountedRef.current = true;
     setIsPolling(true);
     retryCountRef.current = 0;
+    startTimeRef.current = Date.now();
 
     // Initial fetch
     fetchStatus();

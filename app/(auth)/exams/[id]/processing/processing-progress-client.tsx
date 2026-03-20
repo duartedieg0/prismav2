@@ -3,12 +3,13 @@
  * Handles real-time polling of exam status and auto-redirect on completion
  *
  * Features:
- * - Polls exam status every 2 seconds
+ * - Polls exam status every 7 seconds (5-10s per spec)
  * - Displays real-time adaptation progress with animated Brain icon
  * - Shows percentage display and expressive progress bar
  * - Shows loading skeleton while polling
- * - Displays error state with retry button
+ * - Displays error state with retry button and support contact option
  * - Auto-redirects to /exams/{id}/result when status becomes 'ready'
+ * - Handles 30-minute timeout with error message
  * - Full accessibility support with aria labels
  */
 
@@ -50,8 +51,9 @@ export function ProcessingProgressClient({ examId }: ProcessingProgressClientPro
   const [hasRedirected, setHasRedirected] = useState(false);
 
   const { status, isPolling, error, adaptationProgress } = useExamStatusPoller(examId, {
-    interval: 2000,
+    interval: 7000,
     maxRetries: 3,
+    timeoutMs: 1800000,
   });
 
   /**
@@ -72,6 +74,44 @@ export function ProcessingProgressClient({ examId }: ProcessingProgressClientPro
   // Initial loading state - waiting for first poll result
   if (status === null && isPolling) {
     return <ProgressSkeleton />;
+  }
+
+  // Timeout state
+  if (status === 'timeout') {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-xl bg-surface-container-low p-4 text-center">
+          <AlertCircle
+            className="h-8 w-8 text-destructive mx-auto mb-3"
+            aria-hidden="true"
+          />
+          <h3 className="font-semibold text-body text-foreground mb-2">
+            Processo demorando muito
+          </h3>
+          <p className="text-small text-muted-foreground">
+            Este processo está demorando mais que o esperado. Por favor, contate o suporte.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <Button
+            onClick={() => window.location.href = 'mailto:support@adapteminhaprova.com'}
+            aria-label="Enviar email para suporte"
+            className="w-full"
+          >
+            Enviar Email para Suporte
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => router.push('/exams/new')}
+            aria-label="Voltar para provas"
+            className="w-full"
+          >
+            Voltar para provas
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   // Error state
