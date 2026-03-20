@@ -3,12 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import {
-  Brain,
-  BarChart3,
+  Zap,
+  BookOpen,
   Users,
-  FileText,
-  Sparkles,
-  ShieldCheck,
+  CheckCircle,
 } from 'lucide-react'
 
 export default async function LandingPage() {
@@ -22,133 +20,147 @@ export default async function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navbar */}
-      <header className="sticky top-0 z-10 border-b border-border/40 bg-background/90 backdrop-blur">
-        <div className="container flex h-14 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-primary" aria-hidden="true" />
-            <span className="font-display text-sm font-bold text-foreground">
+    <main className="bg-background">
+      {/* Navigation */}
+      <nav className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+        <div className="container flex h-16 items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
+              <span className="font-display font-black text-primary-foreground text-sm">
+                A
+              </span>
+            </div>
+            <span className="font-display text-base font-bold text-foreground hidden sm:inline">
               Adapte Minha Prova
             </span>
           </div>
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="ghost" size="sm">
             <Link href="/login">Entrar</Link>
           </Button>
         </div>
-      </header>
+      </nav>
 
-      {/* Hero */}
-      <section className="bg-primary py-24">
-        <div className="container flex flex-col items-center text-center gap-6">
-          <h1 className="text-display-xl font-display text-white max-w-3xl">
-            Adapte provas para todos os alunos, com IA
-          </h1>
-          <p className="text-white/80 text-body max-w-xl">
-            Crie versões adaptadas das suas avaliações em minutos. Inclusão educacional
-            acessível para professores de todos os níveis.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 mt-2">
-            <Button
-              asChild
-              size="lg"
-              className="bg-accent text-accent-foreground hover:bg-accent/90 shadow-md hover:shadow-lg transition-shadow"
-            >
-              <Link href="/login">Começar gratuitamente</Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="border-white/40 text-white hover:bg-white/10 hover:text-white"
-            >
-              <Link href="#como-funciona">Ver como funciona</Link>
-            </Button>
+      {/* Hero Section */}
+      <section className="bg-background pt-20 pb-24 sm:pt-32 sm:pb-40">
+        <div className="container max-w-4xl mx-auto px-6">
+          <div className="space-y-8">
+            <div className="space-y-6">
+              <h1 className="font-display text-display-xl sm:text-display-xl font-black text-foreground leading-tight">
+                Adapte provas para cada aluno, com inteligência artificial
+              </h1>
+              <p className="text-body text-muted-foreground max-w-2xl leading-relaxed">
+                Crie versões inclusivas das suas avaliações em minutos. Nossa IA entende diferentes necessidades educacionais e gera adaptações personalizadas mantendo a integridade da prova.
+              </p>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <Button asChild size="lg" className="bg-primary hover:bg-primary-container text-primary-foreground">
+                <Link href="/login">Começar gratuitamente</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link href="#recursos">Conhecer recursos</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="como-funciona" className="py-16">
-        <div className="container">
-          <h2 className="text-display-lg font-display text-center text-foreground mb-12">
-            Tudo que você precisa para uma avaliação inclusiva
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="rounded-lg border border-border bg-card p-6 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className={`mb-4 ${feature.iconColor}`}>{feature.icon}</div>
-                <h3 className="text-heading text-foreground mb-2">{feature.title}</h3>
-                <p className="text-small text-muted-foreground">{feature.description}</p>
-              </div>
-            ))}
+      {/* Features Section */}
+      <section id="recursos" className="bg-surface-container-low py-20 sm:py-32">
+        <div className="container max-w-5xl mx-auto px-6">
+          <div className="space-y-16">
+            <div className="space-y-4">
+              <h2 className="font-display text-display-lg font-black text-foreground">
+                Recursos que transformam a educação inclusiva
+              </h2>
+              <p className="text-body text-muted-foreground max-w-2xl">
+                Tudo que você precisa para criar avaliações verdadeiramente acessíveis.
+              </p>
+            </div>
+
+            {/* Feature Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              {features.map((feature, idx) => (
+                <div key={idx} className="bg-card rounded-lg p-8 space-y-4">
+                  <div className="flex items-start gap-4">
+                    <div className="text-primary mt-1 flex-shrink-0">
+                      {feature.icon}
+                    </div>
+                    <div className="space-y-3 flex-1">
+                      <h3 className="font-display text-heading font-bold text-foreground">
+                        {feature.title}
+                      </h3>
+                      <p className="text-body text-muted-foreground">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* CTA final */}
-      <section className="bg-muted py-16">
-        <div className="container flex flex-col items-center text-center gap-6">
-          <h2 className="text-display-lg font-display text-foreground max-w-xl">
-            Pronto para transformar suas provas?
-          </h2>
-          <p className="text-body text-muted-foreground max-w-md">
-            Junte-se a professores que já estão promovendo inclusão com tecnologia.
-          </p>
-          <Button asChild size="lg" variant="default">
-            <Link href="/login">Criar minha conta</Link>
-          </Button>
+      {/* Final CTA Section */}
+      <section className="bg-background py-20 sm:py-32">
+        <div className="container max-w-3xl mx-auto px-6">
+          <div className="text-center space-y-8">
+            <div className="space-y-4">
+              <h2 className="font-display text-display-lg font-black text-foreground">
+                Pronto para começar?
+              </h2>
+              <p className="text-body text-muted-foreground max-w-xl mx-auto">
+                Milhares de educadores já estão transformando suas avaliações. Crie sua conta e adapte sua primeira prova hoje.
+              </p>
+            </div>
+            <Button asChild size="lg" className="bg-primary hover:bg-primary-container text-primary-foreground">
+              <Link href="/login">Criar minha conta gratuita</Link>
+            </Button>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-8">
-        <div className="container text-center text-small text-muted-foreground">
-          © {new Date().getFullYear()} Adapte Minha Prova. Todos os direitos reservados.
+      <footer className="bg-surface-container-low border-t border-border/10 py-12">
+        <div className="container max-w-5xl mx-auto px-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-small text-muted-foreground">
+            <div>© {new Date().getFullYear()} Adapte Minha Prova. Todos os direitos reservados.</div>
+            <div className="flex gap-6">
+              <Link href="#" className="hover:text-foreground transition-colors">
+                Privacidade
+              </Link>
+              <Link href="#" className="hover:text-foreground transition-colors">
+                Termos
+              </Link>
+            </div>
+          </div>
         </div>
       </footer>
-    </div>
+    </main>
   )
 }
 
 const features = [
   {
-    icon: <Brain className="w-8 h-8" aria-hidden="true" />,
-    iconColor: 'text-primary',
-    title: 'Adaptação com IA',
-    description: 'Utilize inteligência artificial para adaptar suas provas de forma inteligente e inclusiva.',
+    icon: <Zap className="w-6 h-6" aria-hidden="true" />,
+    title: 'Adaptação Inteligente',
+    description: 'Nossa IA analisa cada questão e cria versões adaptadas respeitando conteúdo, objetivo e dificuldade.',
   },
   {
-    icon: <FileText className="w-8 h-8" aria-hidden="true" />,
-    iconColor: 'text-emerald-600',
-    title: 'Upload de PDF',
-    description: 'Envie o PDF da sua prova e deixe a IA extrair e organizar as questões automaticamente.',
+    icon: <BookOpen className="w-6 h-6" aria-hidden="true" />,
+    title: 'Upload e Extração',
+    description: 'Envie PDFs das suas provas. Nossa IA extrai, organiza e estrutura as questões automaticamente.',
   },
   {
-    icon: <Sparkles className="w-8 h-8" aria-hidden="true" />,
-    iconColor: 'text-amber-500',
+    icon: <Users className="w-6 h-6" aria-hidden="true" />,
     title: 'Suportes Personalizados',
-    description: 'Configure suportes educacionais específicos para diferentes necessidades dos alunos.',
+    description: 'Configure diferentes tipos de suporte (visual, auditivo, cognitivo) para cada perfil de aluno.',
   },
   {
-    icon: <BarChart3 className="w-8 h-8" aria-hidden="true" />,
-    iconColor: 'text-blue-600',
-    title: 'Acompanhamento em Tempo Real',
-    description: 'Monitore o progresso da adaptação com indicadores visuais em tempo real.',
-  },
-  {
-    icon: <Users className="w-8 h-8" aria-hidden="true" />,
-    iconColor: 'text-violet-600',
-    title: 'Inclusão Educacional',
-    description: 'Promova a inclusão com provas adaptadas para diferentes perfis de aprendizado.',
-  },
-  {
-    icon: <ShieldCheck className="w-8 h-8" aria-hidden="true" />,
-    iconColor: 'text-teal-600',
-    title: 'Seguro e Confiável',
-    description: 'Seus dados e os de seus alunos protegidos com a melhor infraestrutura de segurança.',
+    icon: <CheckCircle className="w-6 h-6" aria-hidden="true" />,
+    title: 'Controle Total',
+    description: 'Revise, ajuste e aprove cada adaptação antes de disponibilizar para seus alunos.',
   },
 ]
