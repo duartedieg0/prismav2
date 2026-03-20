@@ -117,7 +117,8 @@ describe('ExamResultPage', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Exportar PDF')).toBeTruthy();
-        expect(screen.getByText('Voltar ao Dashboard')).toBeTruthy();
+        expect(screen.getByText('Voltar')).toBeTruthy();
+        expect(screen.getByText('Nova Prova')).toBeTruthy();
       });
     });
   });

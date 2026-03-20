@@ -114,8 +114,8 @@ describe('QuestionResultCard', () => {
         />
       );
 
-      const thumbsUp = screen.getByLabelText('Thumbs up');
-      const thumbsDown = screen.getByLabelText('Thumbs down');
+      const thumbsUp = screen.getByLabelText('Adaptação útil - polegar para cima');
+      const thumbsDown = screen.getByLabelText('Adaptação não útil - polegar para baixo');
       expect(thumbsUp).toBeTruthy();
       expect(thumbsDown).toBeTruthy();
     });
@@ -163,8 +163,8 @@ describe('QuestionResultCard', () => {
         />
       );
 
-      const thumbsUp = screen.getByLabelText('Thumbs up');
-      const thumbsDown = screen.getByLabelText('Thumbs down');
+      const thumbsUp = screen.getByLabelText('Adaptação útil - polegar para cima');
+      const thumbsDown = screen.getByLabelText('Adaptação não útil - polegar para baixo');
       expect(thumbsUp).not.toBeDisabled();
       expect(thumbsDown).not.toBeDisabled();
     });
@@ -224,8 +224,8 @@ describe('QuestionResultCard', () => {
         />
       );
 
-      const thumbsUp = screen.getByLabelText('Thumbs up');
-      const thumbsDown = screen.getByLabelText('Thumbs down');
+      const thumbsUp = screen.getByLabelText('Adaptação útil - polegar para cima');
+      const thumbsDown = screen.getByLabelText('Adaptação não útil - polegar para baixo');
       expect(thumbsUp.hasAttribute('aria-label')).toBe(true);
       expect(thumbsDown.hasAttribute('aria-label')).toBe(true);
     });
@@ -241,8 +241,8 @@ describe('QuestionResultCard', () => {
         />
       );
 
-      const thumbsUp = screen.getByLabelText('Thumbs up');
-      const thumbsDown = screen.getByLabelText('Thumbs down');
+      const thumbsUp = screen.getByLabelText('Adaptação útil - polegar para cima');
+      const thumbsDown = screen.getByLabelText('Adaptação não útil - polegar para baixo');
       // Buttons should be focusable (no tabindex="-1")
       expect(thumbsUp).toBeTruthy();
       expect(thumbsDown).toBeTruthy();
@@ -264,7 +264,7 @@ describe('QuestionResultCard', () => {
       // Check for feedback prompt
       expect(screen.getByText('Esta adaptação foi útil?')).toBeTruthy();
       // Check for buttons
-      const thumbsUp = screen.getByLabelText('Thumbs up');
+      const thumbsUp = screen.getByLabelText('Adaptação útil - polegar para cima');
       expect(thumbsUp).toBeTruthy();
     });
   });
