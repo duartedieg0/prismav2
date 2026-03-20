@@ -5,7 +5,7 @@
  * Route: /config/models (admin only)
  * Features:
  * - CRUD operations for AI models (Create, Read, Update, Delete)
- * - Table display with all models
+ * - Table display with all models using shadcn Table
  * - Add model button opens dialog with form
  * - Edit model inline or via modal
  * - Delete with confirmation
@@ -13,10 +13,15 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { redirect } from 'next/navigation';
-import { Pencil, Trash2 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { AIModelsManagementClient } from '@/components/admin/ai-models-management';
 
 interface AiModel {
@@ -71,80 +76,55 @@ export default async function AiModelsPage() {
   return (
     <main className="min-h-screen bg-background py-8">
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Modelos de IA</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Gerencie os modelos de inteligência artificial disponíveis no sistema
-            </p>
-          </div>
-          <AIModelsManagementClient initialModels={models} />
-        </div>
+        <AIModelsManagementClient initialModels={models} />
 
         {/* Models Table */}
-        {models.length === 0 ? (
-          <Card className="p-8">
-            <div className="flex flex-col items-center justify-center gap-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                Nenhum modelo de IA cadastrado
-              </p>
-            </div>
-          </Card>
-        ) : (
-          <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                      Nome
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                      Descrição
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                      Padrão
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {models.map((model) => (
-                    <tr key={model.id} className="hover:bg-muted/20">
-                      <td className="px-6 py-4 text-sm font-medium text-foreground">
-                        {model.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {model.description || '—'}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        {model.is_default ? (
-                          <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
-                            Padrão
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+        {models.length > 0 && (
+          <div className="rounded-lg overflow-hidden bg-surface-container-low border border-outline/10">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent border-b border-outline/10">
+                  <TableHead className="px-6 py-4 text-sm font-semibold text-foreground">
+                    Nome
+                  </TableHead>
+                  <TableHead className="px-6 py-4 text-sm font-semibold text-foreground">
+                    Descrição
+                  </TableHead>
+                  <TableHead className="px-6 py-4 text-sm font-semibold text-foreground">
+                    Padrão
+                  </TableHead>
+                  <TableHead className="px-6 py-4 text-sm font-semibold text-foreground">
+                    Ações
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {models.map((model) => (
+                  <TableRow
+                    key={model.id}
+                    className="border-b border-outline/10 hover:bg-surface-container-highest/50"
+                  >
+                    <TableCell className="px-6 py-4 text-sm font-medium text-foreground">
+                      {model.name}
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-sm text-muted-foreground">
+                      {model.description || '—'}
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-sm">
+                      {model.is_default ? (
+                        <span className="inline-flex items-center rounded-md bg-success/10 px-2 py-1 text-xs font-medium text-success">
+                          Padrão
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-6 py-4 text-sm" />
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
     </main>
