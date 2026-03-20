@@ -6,7 +6,6 @@ import {
   Zap,
   BookOpen,
   Users,
-  CheckCircle,
 } from 'lucide-react'
 
 export default async function LandingPage() {
