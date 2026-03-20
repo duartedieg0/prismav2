@@ -75,6 +75,7 @@ export function ExamCard({
 
       if (error) {
         console.error('Failed to delete exam:', error);
+        setShowDeleteDialog(false);
         return;
       }
 
