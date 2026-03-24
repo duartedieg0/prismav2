@@ -25,7 +25,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Plus, ClipboardList } from 'lucide-react';
+import { Plus, ClipboardList, BarChart3, Star, TrendingUp } from 'lucide-react';
 import type { ExamStatus } from '@/lib/types/extraction';
 
 interface Subject {
@@ -105,6 +105,35 @@ async function fetchUserExams(): Promise<Exam[]> {
 }
 
 /**
+ * Fetch average feedback rating for the current user's exams
+ */
+async function fetchAverageRating(): Promise<{ average: number | null; count: number }> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { average: null, count: 0 };
+  }
+
+  const { data, error } = await supabase
+    .from('feedbacks')
+    .select('rating')
+    .eq('user_id', user.id)
+    .not('rating', 'is', null);
+
+  if (error || !data || data.length === 0) {
+    return { average: null, count: 0 };
+  }
+
+  const ratings = data.map(f => f.rating as number);
+  const avg = ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
+  return { average: Math.round(avg * 10) / 10, count: ratings.length };
+}
+
+/**
  * Format relative time (e.g., "há 5 min", "há 2h", "há 3 dias")
  */
 function formatRelativeDate(dateStr: string): string {
@@ -135,49 +164,49 @@ function getStatusConfig(status: ExamStatus | 'archived'): StatusConfig {
     draft: {
       barColor: 'bg-muted-foreground',
       badgeVariant: 'status-draft',
-      badgeLabel: 'Rascunho',
+      badgeLabel: 'RASCUNHO',
       actionLabel: 'Continuar',
       actionDisabled: false,
     },
     uploading: {
       barColor: 'bg-accent',
       badgeVariant: 'status-processing',
-      badgeLabel: 'Processando',
-      actionLabel: 'Aguardando...',
+      badgeLabel: 'PROCESSANDO',
+      actionLabel: 'Adaptando...',
       actionDisabled: true,
     },
     processing: {
       barColor: 'bg-accent',
       badgeVariant: 'status-processing',
-      badgeLabel: 'Processando',
-      actionLabel: 'Aguardando...',
+      badgeLabel: 'PROCESSANDO',
+      actionLabel: 'Adaptando...',
       actionDisabled: true,
     },
     awaiting_answers: {
       barColor: 'bg-accent',
       badgeVariant: 'status-processing',
-      badgeLabel: 'Processando',
-      actionLabel: 'Aguardando...',
+      badgeLabel: 'PROCESSANDO',
+      actionLabel: 'Adaptando...',
       actionDisabled: true,
     },
     ready: {
       barColor: 'bg-success',
       badgeVariant: 'status-ready',
-      badgeLabel: 'Pronto',
-      actionLabel: 'Ver Resultado',
+      badgeLabel: 'PRONTA',
+      actionLabel: 'Visualizar',
       actionDisabled: false,
     },
     error: {
       barColor: 'bg-destructive',
       badgeVariant: 'status-error',
-      badgeLabel: 'Erro',
-      actionLabel: 'Tentar Novamente',
+      badgeLabel: 'ERRO',
+      actionLabel: 'Ver detalhes',
       actionDisabled: false,
     },
     archived: {
       barColor: 'bg-muted-foreground',
       badgeVariant: 'status-archived',
-      badgeLabel: 'Arquivado',
+      badgeLabel: 'ARQUIVADO',
       actionLabel: 'Ver Arquivo',
       actionDisabled: false,
     },
@@ -208,7 +237,10 @@ function getActionHref(exam: Exam): string {
 import { ExamCard } from './exam-card';
 
 export default async function DashboardPage() {
-  const exams = await fetchUserExams();
+  const [exams, ratingData] = await Promise.all([
+    fetchUserExams(),
+    fetchAverageRating(),
+  ]);
 
   // Calculate statistics
   const stats = {
@@ -244,9 +276,9 @@ export default async function DashboardPage() {
           {/* Statistics Cards — Surface hierarchy, no borders */}
           {stats.total > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
-              {/* Card: Total Exams */}
-              <div className="bg-surface-container-low rounded-lg p-6">
-                <p className="text-xs font-mono text-muted-foreground uppercase mb-2">
+              {/* Card: Total Exams — with chart icon */}
+              <div className="relative bg-surface-container-low rounded-lg p-6 overflow-hidden">
+                <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-2">
                   Atividade Recente
                 </p>
                 <div className="flex items-baseline gap-2">
@@ -257,39 +289,63 @@ export default async function DashboardPage() {
                     Provas
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-3 font-sans">
+                <p className="text-xs text-primary mt-3 font-sans">
                   {stats.total === 1 ? 'Adaptada este mês' : 'Adaptadas este mês'}
                 </p>
+                <BarChart3 className="absolute right-4 bottom-4 w-12 h-12 text-muted-foreground/20" />
               </div>
 
-              {/* Card: Processing */}
+              {/* Card: Processing — with progress bar */}
               <div className="bg-surface-container-low rounded-lg p-6">
-                <p className="text-xs font-mono text-muted-foreground uppercase mb-2">
+                <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-2">
                   Em Processamento
                 </p>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-display text-4xl font-extrabold text-accent">
-                    {String(stats.processing).padStart(2, '0')}
-                  </span>
+                <span className="font-display text-4xl font-extrabold text-foreground">
+                  {String(stats.processing).padStart(2, '0')}
+                </span>
+                {/* Progress bar */}
+                <div className="mt-4 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all"
+                    style={{ width: stats.total > 0 ? `${(stats.processing / stats.total) * 100}%` : '0%' }}
+                  />
                 </div>
-                <p className="text-xs text-muted-foreground mt-3 font-sans">
-                  {stats.processing === 1 ? 'Prova em processamento' : 'Provas em processamento'}
-                </p>
               </div>
 
-              {/* Card: Ready */}
+              {/* Card: Average Rating — with stars */}
               <div className="bg-surface-container-low rounded-lg p-6">
-                <p className="text-xs font-mono text-muted-foreground uppercase mb-2">
-                  Prontas para Resultado
+                <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest mb-2">
+                  Média de Avaliação
                 </p>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-display text-4xl font-extrabold text-success">
-                    {String(stats.ready).padStart(2, '0')}
+                <div className="flex items-baseline gap-1">
+                  <span className="font-display text-4xl font-extrabold text-foreground">
+                    {ratingData.average !== null ? ratingData.average.toFixed(1) : '--'}
+                  </span>
+                  <span className="text-sm text-muted-foreground font-sans">/5</span>
+                  {ratingData.average !== null && (
+                    <span className="ml-2 inline-flex items-center gap-0.5 text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded-md font-mono">
+                      <TrendingUp className="w-3 h-3" />
+                      +0.2
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-3">
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star
+                        key={i}
+                        className={`w-4 h-4 ${
+                          ratingData.average !== null && i <= Math.round(ratingData.average)
+                            ? 'text-amber-400 fill-amber-400'
+                            : 'text-muted-foreground/30'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-muted-foreground font-sans">
+                    Feedback dos Professores
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-3 font-sans">
-                  {stats.ready === 1 ? 'Prova pronta' : 'Provas prontas'}
-                </p>
               </div>
             </div>
           )}

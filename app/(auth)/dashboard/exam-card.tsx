@@ -6,7 +6,13 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { BookOpen, Pencil, Trash2 } from 'lucide-react';
+import { BookOpen, MoreVertical, Pencil, Trash2, ArrowRight, RefreshCw, AlertCircle } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,7 +86,6 @@ export function ExamCard({
       }
 
       setShowDeleteDialog(false);
-      // Refresh the page to update the exam list
       router.refresh();
     } catch (error) {
       console.error('Error deleting exam:', error);
@@ -89,89 +94,135 @@ export function ExamCard({
     }
   };
 
+  /**
+   * Render action element based on exam status — matching prototype:
+   * - ready: green text link "Visualizar →"
+   * - processing: green text "Adaptando..." with spinner
+   * - draft: green filled "Continuar" button
+   * - error: red text "Ver detalhes" with warning icon
+   */
+  function renderAction() {
+    switch (exam.status) {
+      case 'ready':
+        return (
+          <Link
+            href={actionHref}
+            className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-container transition-colors"
+          >
+            {statusConfig.actionLabel}
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        );
+      case 'uploading':
+      case 'processing':
+      case 'awaiting_answers':
+        return (
+          <span className="inline-flex items-center gap-1.5 text-sm text-primary">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            {statusConfig.actionLabel}
+          </span>
+        );
+      case 'draft':
+        return (
+          <Link href={actionHref}>
+            <Button
+              variant="default"
+              size="sm"
+              className="bg-primary hover:bg-primary-container text-primary-foreground font-display font-semibold"
+            >
+              {statusConfig.actionLabel}
+            </Button>
+          </Link>
+        );
+      case 'error':
+        return (
+          <Link
+            href={actionHref}
+            className="inline-flex items-center gap-1 text-sm font-semibold text-destructive hover:text-destructive/80 transition-colors"
+          >
+            {statusConfig.actionLabel}
+            <AlertCircle className="w-4 h-4" />
+          </Link>
+        );
+      default:
+        return (
+          <Link
+            href={actionHref}
+            className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-container transition-colors"
+          >
+            {statusConfig.actionLabel}
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        );
+    }
+  }
+
   return (
     <>
-      <div className="relative bg-surface-container-low rounded-lg overflow-hidden hover:bg-opacity-90 transition-colors">
+      <div className="relative bg-card rounded-lg overflow-hidden hover:shadow-sm transition-all">
         {/* Left border indicator — thick, colored */}
         <div
           className={`absolute left-0 top-0 bottom-0 w-1.5 ${statusConfig.barColor}`}
         />
 
         {/* Card Content */}
-        <div className="p-6 pl-6">
-          <div className="flex flex-col h-full gap-4">
-            {/* Header: Status badge + Action buttons */}
-            <div className="flex items-start justify-between gap-4">
-              <Badge
-                variant={statusConfig.badgeVariant}
-                className="flex-shrink-0"
-              >
-                {statusConfig.badgeLabel}
-              </Badge>
-              {/* Action buttons — only if not processing */}
-              {!statusConfig.actionDisabled && (
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => router.push(`/exams/${exam.id}/edit`)}
-                    className="text-muted-foreground hover:text-foreground transition-colors p-1.5 hover:bg-muted rounded-md"
-                    title="Editar prova"
-                    aria-label="Editar prova"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-muted-foreground hover:text-destructive transition-colors p-1.5 hover:bg-muted rounded-md"
-                    title="Deletar prova"
-                    aria-label="Deletar prova"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-            </div>
+        <div className="p-6 pl-7 flex flex-col gap-4">
+          {/* Header: Status badge + Three-dot menu */}
+          <div className="flex items-start justify-between">
+            <Badge
+              variant={statusConfig.badgeVariant}
+              className="flex-shrink-0"
+            >
+              {statusConfig.badgeLabel}
+            </Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"
+                  aria-label="Opções da prova"
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => router.push(`/exams/${exam.id}/edit`)}>
+                  <Pencil className="w-4 h-4" />
+                  Editar
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Deletar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-            {/* Title section — headline emphasis */}
-            <div className="flex-1">
-              <h3 className="font-display text-xl font-bold text-foreground line-clamp-2 leading-tight">
-                {exam.title}
-              </h3>
-            </div>
+          {/* Title */}
+          <h3 className="font-display text-xl font-bold text-foreground line-clamp-2 leading-tight">
+            {exam.title}
+          </h3>
 
-            {/* Metadata: Subject, Grade Level */}
-            <div className="text-sm text-muted-foreground font-sans space-y-1">
-              {exam.subject && (
-                <p className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 flex-shrink-0" />
-                  {exam.subject.name}
-                  {exam.grade_level && <span className="text-muted-foreground">·</span>}
-                  {exam.grade_level && <span>{exam.grade_level.name}</span>}
-                </p>
+          {/* Metadata: Subject + Grade Level */}
+          {(exam.subject || exam.grade_level) && (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground font-sans">
+              <BookOpen className="w-4 h-4 flex-shrink-0" />
+              {exam.subject?.name}
+              {exam.subject && exam.grade_level && (
+                <span className="text-muted-foreground">·</span>
               )}
-              {!exam.subject && exam.grade_level && (
-                <p className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 flex-shrink-0" />
-                  {exam.grade_level.name}
-                </p>
-              )}
-            </div>
-
-            {/* Time indicator */}
-            <p className="text-xs text-muted-foreground font-mono">
-              {formatRelativeDate(exam.updated_at)}
+              {exam.grade_level?.name}
             </p>
+          )}
 
-            {/* Action button */}
-            <Link href={actionHref} className="block mt-2">
-              <Button
-                variant="default"
-                size="sm"
-                disabled={statusConfig.actionDisabled}
-                className="w-full"
-              >
-                {statusConfig.actionLabel}
-              </Button>
-            </Link>
+          {/* Separator + Footer: Time + Action */}
+          <div className="border-t border-border/10 pt-4 mt-auto flex items-center justify-between">
+            <span className="text-xs text-muted-foreground font-sans">
+              {formatRelativeDate(exam.updated_at)}
+            </span>
+            {renderAction()}
           </div>
         </div>
       </div>
